@@ -81,10 +81,10 @@ steps:
       - -c
       - |
         set -euo pipefail
-        # NOTE: $$ escapes the dollar sign. Cloud Build substitutes $VAR in
-        # this file before bash ever sees it, so a shell variable written as
-        # $URL would be replaced with an empty string - or fail the build as
-        # an unknown substitution.
+        # NOTE: shell variables below are written with a doubled dollar sign.
+        # Cloud Build resolves its own substitutions across this whole block -
+        # comments included - before bash ever runs, so a single dollar sign
+        # in front of a name it does not recognise fails the build outright.
         URL=$$(gcloud functions describe ${_FUNCTION_NAME} \
           --region=${_REGION} --gen2 --format="value(serviceConfig.uri)")
         # A dry run: reads the real spreadsheet, validates every tab, writes
