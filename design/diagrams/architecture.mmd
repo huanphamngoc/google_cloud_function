@@ -1,0 +1,93 @@
+%% Clearstate — target architecture on GCP / BigQuery
+%% Render: mermaid.live | VS Code "Markdown Preview Mermaid Support" | mmdc -i architecture.mmd -o architecture.svg
+
+flowchart LR
+
+  %% ---------------- sources ----------------
+  subgraph SRC["① Sources — where the data lives today"]
+    direction TB
+    S1["Google Sheets<br/><small>assumptions, trackers, overrides</small>"]
+    S2["Excel on Drive<br/><small>market models, client files</small>"]
+    S3["Vendor / API extracts<br/><small>purchased datasets</small>"]
+    S4["Manual uploads<br/><small>one-off analyst files</small>"]
+  end
+
+  %% ---------------- extract ----------------
+  subgraph EXT["② Extract — Cloud Run, config-driven"]
+    direction TB
+    E1["Contract loader<br/><small>sources/*.yaml</small>"]
+    E2["Reader<br/><small>Sheets API · openpyxl · csv</small>"]
+    E3["Schema evolution engine<br/><small>classify · resolve · decide</small>"]
+    E4["Validator<br/><small>types · ranges · regex · grain</small>"]
+    E1 --> E2 --> E3 --> E4
+  end
+
+  ARCH[("GCS archive<br/><small>immutable original bytes</small>")]
+
+  %% ---------------- warehouse ----------------
+  subgraph BQ["③ BigQuery — transformed by Dataform"]
+    direction TB
+    L1["<b>landing</b><br/><small>append-only · partitioned by load date<br/>canonical cols + _raw JSON</small>"]
+    L2["<b>staging</b><br/><small>typed · deduplicated · alias-resolved</small>"]
+    L3["<b>core</b><br/><small>dim_* / fct_* — conformed business model</small>"]
+    L4["<b>mart_*</b><br/><small>per deliverable · per client · per dashboard</small>"]
+    L1 -->|"stg_ views resolve<br/>historical names"| L2 --> L3 --> L4
+  end
+
+  %% ---------------- serving ----------------
+  subgraph CON["④ Consume — authorized views only"]
+    direction TB
+    C1["Looker Studio<br/><small>internal dashboards + BI Engine</small>"]
+    C2["Connected Sheets<br/><small>analyst self-serve</small>"]
+    C3["Client portal<br/><small>future — row-level security</small>"]
+    C4["Excel / PPT render job<br/><small>reproducible deliverables</small>"]
+  end
+
+  %% ---------------- control plane ----------------
+  subgraph OPS["⑤ ops — the control plane"]
+    direction TB
+    O1["run_log"]
+    O2["schema_registry"]
+    O3["schema_evolution_log"]
+    O4["dq_results"]
+    O5["recon_results"]
+    O6["cost_by_label"]
+  end
+
+  ORCH["<b>Cloud Scheduler → Workflows</b><br/><small>open · extract · load · transform · assert · reconcile · publish</small>"]
+  APS["Apps Script<br/><small>submit button · in-sheet validation · write-back</small>"]
+
+  %% ---------------- edges ----------------
+  S1 --> E1
+  S2 --> E1
+  S3 --> E1
+  S4 --> E1
+  S1 -.->|"analyst clicks Submit"| APS
+  APS -.->|"triggers run"| ORCH
+
+  E2 -->|"original bytes, before parsing"| ARCH
+  E4 ==>|"load (idempotent by load_id)"| L1
+
+  L4 ==>|"authorized view"| C1
+  L4 ==>|"authorized view"| C2
+  L4 ==>|"authorized view + RLS"| C3
+  L4 ==>|"authorized view"| C4
+
+  ORCH -.-> EXT
+  ORCH -.-> BQ
+  E3 -.->|"every decision recorded"| O2
+  E3 -.-> O3
+  E4 -.-> O4
+  ORCH -.-> O1
+  L4 -.->|"vs frozen baseline"| O5
+
+  %% ---------------- styling ----------------
+  classDef zone fill:#1D9482,fill-opacity:0.10,stroke:#1D9482,stroke-width:1.5px
+  classDef ctrl fill:#BE7134,fill-opacity:0.10,stroke:#BE7134,stroke-width:1.5px
+  classDef plain fill:none,stroke:#8A9793,stroke-width:1px
+
+  class L1,L2,L3,L4 zone
+  class O1,O2,O3,O4,O5,O6 ctrl
+  class S1,S2,S3,S4,E1,E2,E4,C1,C2,C3,C4 plain
+  class E3 ctrl
+  class ORCH,APS,ARCH plain

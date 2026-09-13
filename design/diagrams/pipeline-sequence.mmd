@@ -1,0 +1,65 @@
+%% One orchestrated run, end to end — the seven steps from design/architecture.md §06
+%% Render: mermaid.live | VS Code Mermaid preview
+
+sequenceDiagram
+    autonumber
+    participant SCH as Cloud Scheduler
+    participant WF as Workflows
+    participant RUN as Cloud Run<br/>extractor
+    participant SRC as Sheets / Drive
+    participant GCS as GCS archive
+    participant BQ as BigQuery
+    participant DF as Dataform
+    participant OPS as ops.*
+    participant N as Alerting
+
+    SCH->>WF: trigger (dataset, schedule)
+    WF->>OPS: INSERT run_log (load_id, started_at)
+
+    rect rgba(29, 148, 130, 0.07)
+    note over RUN,GCS: Step 2 — extract, with schema evolution
+    WF->>RUN: extract(source_id, load_id)
+    RUN->>SRC: read declared tabs / ranges
+    SRC-->>RUN: rows + observed header
+    RUN->>GCS: archive original bytes (immutable)
+    RUN->>OPS: lookup schema_registry (fingerprint)
+    alt fingerprint known
+        OPS-->>RUN: known version — no evolution
+    else new fingerprint
+        RUN->>RUN: classify changes → AUTO / PROPOSE / BLOCK
+        RUN->>OPS: INSERT schema_evolution_log
+        opt any BLOCK
+            RUN-->>WF: fail before writing a single row
+            WF->>N: alert contract owner by name
+        end
+    end
+    end
+
+    rect rgba(29, 148, 130, 0.07)
+    note over RUN,BQ: Step 3 — load (idempotent)
+    RUN->>BQ: DELETE partition WHERE load_id = @load_id
+    RUN->>BQ: INSERT landing.raw_* (canonical cols + _raw JSON)
+    RUN->>OPS: INSERT dq_results (validator outcome)
+    end
+
+    WF->>DF: run tagged workflow (staging → core → marts)
+    DF->>BQ: build models + inline assertions
+    alt blocking assertion fails in core
+        DF-->>WF: fail — published state untouched
+        WF->>N: alert data engineering
+    else assertions pass
+        DF-->>WF: ok
+    end
+
+    rect rgba(190, 113, 52, 0.07)
+    note over WF,OPS: Step 6 — reconcile against the frozen baseline
+    WF->>BQ: run generic diff (grain + tolerance from contract)
+    BQ->>OPS: INSERT recon_results (match_rate, variances)
+    alt match_rate below threshold
+        WF->>N: variance report to owning analyst
+    end
+    end
+
+    WF->>BQ: swap authorized views to new version
+    WF->>OPS: UPDATE run_log (finished_at, status)
+    WF->>N: run summary to team channel

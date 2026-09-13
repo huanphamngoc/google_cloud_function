@@ -1,0 +1,56 @@
+# CI/CD for sheet-to-bq-loader (the original single-tab loader).
+#
+# Triggered on push to main when anything under functions/sheet_to_bq_loader/
+# changes. See CICD.md at the repo root for the trigger command.
+#
+# This function has no tests of its own - it is one file that was deployed and
+# debugged by hand (see deployment-log.md). The suite still runs here because
+# a change that breaks the shared test suite should not reach production
+# regardless of which directory triggered the build.
+
+substitutions:
+  _REGION: asia-southeast1
+  _FUNCTION_NAME: sheet-to-bq-loader
+  _RUNTIME_SA: sheets-to-bq-loader
+  _SPREADSHEET_ID: "1ClGSnw5kawxRCr43qNUJr4IdiWe3ItH28tBq6CVgcfk"
+  _SHEET_RANGE: "Sheet1!A1:B"
+  _BQ_DATASET: bronze
+  _BQ_TABLE: brz_customer
+
+steps:
+  - id: "tests"
+    name: "python:3.12-slim"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        pip install --quiet --no-cache-dir pytest PyYAML
+        python -m pytest tests/ -q
+        python -m py_compile functions/sheet_to_bq_loader/main.py
+
+  - id: "deploy"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud functions deploy ${_FUNCTION_NAME} \
+          --gen2 \
+          --runtime=python312 \
+          --region=${_REGION} \
+          --source=functions/sheet_to_bq_loader \
+          --entry-point=load_sheet_to_bq \
+          --trigger-http \
+          --no-allow-unauthenticated \
+          --run-service-account="${_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com" \
+          --memory=256Mi \
+          --timeout=120s \
+          --set-env-vars="SPREADSHEET_ID=${_SPREADSHEET_ID},SHEET_RANGE=${_SHEET_RANGE},BQ_DATASET=${_BQ_DATASET},BQ_TABLE=${_BQ_TABLE}"
+    waitFor: ["tests"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 600s

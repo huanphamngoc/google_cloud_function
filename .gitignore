@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Credentials - nothing in this project needs a key file, and committing one
+# is the single most damaging mistake available here. ADC is used everywhere.
+*.json
+!package.json
+!package-lock.json
+.env
+*.pem
+*.key
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local scratch
+*.log
+tmp/
+scratch/

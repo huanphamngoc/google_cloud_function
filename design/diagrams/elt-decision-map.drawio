@@ -1,0 +1,138 @@
+<mxfile host="app.diagrams.net" modified="2026-09-10T00:00:00.000Z" agent="Claude Code" version="24.7.7" type="device">
+  <diagram id="elt-decision-map" name="Bản đồ quyết định">
+    <mxGraphModel dx="1600" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1150" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="&lt;b style=&quot;font-size:22px&quot;&gt;Bản đồ quyết định — ELT Drive/Sheets → BigQuery&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px&quot;&gt;project &lt;code&gt;elt-drive-to-bq&lt;/code&gt; · trạng thái 2026-09-10 · chi tiết ngưỡng: elt-drive-to-bq-decisions.md&lt;/span&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="legend" value="&lt;b&gt;Chú giải trạng thái&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;color:#B85450&quot;&gt;■&lt;/span&gt; Đã vượt ngưỡng — cần xử lý&#160;&#160;&#160;&lt;span style=&quot;color:#D79B00&quot;&gt;■&lt;/span&gt; Cần xác minh / nên làm sớm&#160;&#160;&#160;&lt;span style=&quot;color:#82B366&quot;&gt;■&lt;/span&gt; Đang ở nhánh đúng" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;align=left;verticalAlign=middle;spacingLeft=12;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="30" width="560" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NHÓM 1: TRÍCH XUẤT &amp; KÍCH HOẠT ============ -->
+        <mxCell id="c1" value="&lt;b&gt;1 · NGUỒN → TRÍCH XUẤT&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;verticalAlign=top;spacingTop=8;fontSize=13;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="480" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d3" value="&lt;b&gt;#3 · Chế độ trích xuất&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: &lt;b&gt;Full extract&lt;/b&gt; (1 dòng)&lt;br&gt;Ngưỡng: &amp;gt; 50.000 dòng &lt;i&gt;hoặc&lt;/i&gt; &amp;gt; 120s đọc&lt;br&gt;&lt;br&gt;&lt;i&gt;Lưu ý: Sheet không có transaction log →&lt;br&gt;incremental gần như luôn là lựa chọn tệ,&lt;br&gt;bất kể kích thước&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c1">
+          <mxGeometry x="20" y="45" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d2" value="&lt;b&gt;#2 · Cơ chế kích hoạt&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: Scheduler &lt;code&gt;0 6 * * MON-FRI&lt;/code&gt;&lt;br&gt;&lt;b&gt;— chưa xác minh đã bật&lt;/b&gt;&lt;br&gt;Ngưỡng: SLA &amp;lt; 15 phút → event-driven&lt;br&gt;&lt;br&gt;&lt;i&gt;Event-driven trên Sheet bắt buộc có debounce&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c1">
+          <mxGeometry x="20" y="195" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NHÓM 2: NỀN TẢNG CHẠY ============ -->
+        <mxCell id="c2" value="&lt;b&gt;2 · NỀN TẢNG CHẠY &amp; DEPLOY&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;verticalAlign=top;spacingTop=8;fontSize=13;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="560" y="120" width="480" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d1" value="&lt;b&gt;#1 · Nền tảng chạy job&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: &lt;b&gt;Cloud Function gen2&lt;/b&gt; 256MB / 120s&lt;br&gt;Ngưỡng: &amp;gt; 9 phút &lt;i&gt;hoặc&lt;/i&gt; &amp;gt; 2 GB → Cloud Run Job&lt;br&gt;&lt;br&gt;&lt;i&gt;Cảnh báo sớm: khi 1 lần chạy vượt 50%&lt;br&gt;timeout đã cấu hình (= 60 giây)&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c2">
+          <mxGeometry x="20" y="45" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d12" value="&lt;b&gt;#12 · CI/CD &amp; môi trường&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: deploy thủ công qua &lt;code&gt;deploy.sh&lt;/code&gt;&lt;br&gt;&lt;b&gt;— chưa có git repo&lt;/b&gt;&lt;br&gt;Ngưỡng CI/CD: ≥ 2 người sửa code&lt;br&gt;&lt;br&gt;&lt;i&gt;&lt;code&gt;git init&lt;/code&gt; nên làm ngay — không phụ thuộc ngưỡng&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c2">
+          <mxGeometry x="20" y="195" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NHÓM 3: SCHEMA ============ -->
+        <mxCell id="c3" value="&lt;b&gt;3 · HỢP ĐỒNG DỮ LIỆU&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;verticalAlign=top;spacingTop=8;fontSize=13;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="120" width="480" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d4" value="&lt;b&gt;#4 · Xử lý schema&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: &lt;b&gt;hardcode trong code&lt;/b&gt;&lt;br&gt;&lt;code&gt;CANONICAL_COLUMNS = (&quot;id&quot;, &quot;name&quot;)&lt;/code&gt;&lt;br&gt;Ngưỡng: nguồn thứ 2, &lt;i&gt;hoặc&lt;/i&gt; lần đổi cột thứ 2&lt;br&gt;&lt;br&gt;&lt;i&gt;Nguồn thứ 2 = tín hiệu chuyển nhánh. Đừng copy function.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c3">
+          <mxGeometry x="20" y="45" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d4b" value="&lt;b&gt;Khi chuyển sang config-driven — phân loại thay đổi&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;AUTO&lt;/b&gt; — thêm cột · đổi thứ tự · nới kiểu&lt;br&gt;&lt;b&gt;PROPOSE&lt;/b&gt; — đổi tên cột, độ giống ≥ 0.5 → chờ duyệt&lt;br&gt;&lt;b&gt;BLOCK&lt;/b&gt; — xoá cột · thu hẹp kiểu · đổi grain" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B3B3B3;dashed=1;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c3">
+          <mxGeometry x="20" y="195" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NHÓM 4: LƯU TRỮ BRONZE ============ -->
+        <mxCell id="c4" value="&lt;b&gt;4 · LƯU TRỮ — BRONZE&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;verticalAlign=top;spacingTop=8;fontSize=13;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="480" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d5" value="&lt;b&gt;#5 · Chế độ ghi&lt;/b&gt;&#160;&#160;&lt;b style=&quot;color:#B85450&quot;&gt;◆ ĐÃ VƯỢT NGƯỠNG&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: &lt;b&gt;WRITE_TRUNCATE&lt;/b&gt; — mỗi lần chạy xoá sạch&lt;br&gt;Ngưỡng: chi phí lưu &lt;b&gt;không&lt;/b&gt; biện minh được&lt;br&gt;&lt;br&gt;&lt;i&gt;100k dòng/ngày append-only ≈ 0,80 USD/năm.&lt;br&gt;Mỗi ngày TRUNCATE = một ngày lịch sử mất vĩnh viễn.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c4">
+          <mxGeometry x="20" y="45" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d6" value="&lt;b&gt;#6 · Phân vùng &amp; clustering&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: không có (bảng 1 dòng) — đúng&lt;br&gt;Ngưỡng: &amp;gt; 1 GB &lt;i&gt;hoặc&lt;/i&gt; &amp;gt; 10 triệu dòng&lt;br&gt;&lt;br&gt;&lt;i&gt;Làm CÙNG LÚC với #5: tạo bảng mới đã có sẵn&lt;br&gt;partition theo &lt;code&gt;_ingested_at&lt;/code&gt; — lúc bảng trống thì miễn phí&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c4">
+          <mxGeometry x="20" y="195" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NHÓM 5: BIẾN ĐỔI &amp; ĐIỀU PHỐI ============ -->
+        <mxCell id="c5" value="&lt;b&gt;5 · BIẾN ĐỔI &amp; ĐIỀU PHỐI&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;verticalAlign=top;spacingTop=8;fontSize=13;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="560" y="520" width="480" height="350" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d7" value="&lt;b&gt;#7 · Công cụ biến đổi&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: chưa có tầng silver/gold nào&lt;br&gt;1–2 bảng → Scheduled Query&#160;&#160;·&#160;&#160;&lt;b&gt;Ngưỡng: bảng thứ 3 → Dataform&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;i&gt;Lý do ngưỡng 3: từ đây phụ thuộc chéo tạo lỗi im lặng —&lt;br&gt;B chạy trước A xong sẽ đọc dữ liệu cũ mà không báo gì&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c5">
+          <mxGeometry x="20" y="45" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d8" value="&lt;b&gt;#8 · Điều phối&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: Scheduler gọi thẳng — đủ cho 1 nguồn&lt;br&gt;Ngưỡng: ≥ 3 nguồn &lt;i&gt;hoặc&lt;/i&gt; có phụ thuộc chéo → Workflows&lt;br&gt;&lt;br&gt;&lt;i&gt;&lt;b&gt;Composer: 300–500 USD/tháng kể cả khi không chạy gì.&lt;/b&gt;&lt;br&gt;Dưới 20 nguồn, Workflows gần như luôn đủ.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c5">
+          <mxGeometry x="20" y="195" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NHÓM 6: VẬN HÀNH ============ -->
+        <mxCell id="c6" value="&lt;b&gt;6 · VẬN HÀNH — bao trùm mọi bước&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;verticalAlign=top;spacingTop=8;fontSize=13;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="520" width="480" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d9" value="&lt;b&gt;#9 · Giám sát&lt;/b&gt;&#160;&#160;&lt;b style=&quot;color:#B85450&quot;&gt;◆ ĐÃ VƯỢT NGƯỠNG&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: &lt;b&gt;không có cảnh báo nào&lt;/b&gt;&lt;br&gt;Câu hỏi gốc cây: &lt;i&gt;có ai phát hiện nếu job fail 3 ngày liền&lt;br&gt;mà không cần vào Console?&lt;/i&gt; → &lt;b&gt;Không.&lt;/b&gt;&lt;br&gt;&lt;br&gt;3 alert tối thiểu: fail (ngay) · freshness (49h) · số dòng (±50%)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8CECC;strokeColor=#B85450;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c6">
+          <mxGeometry x="20" y="45" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d10" value="&lt;b&gt;#10 · Chặn chi phí&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: không có — chi phí gần 0&lt;br&gt;&lt;b&gt;Budget alert nên đặt NGAY&lt;/b&gt; (rẻ, bảo vệ khỏi sự cố)&lt;br&gt;&amp;gt; 2.000 USD/tháng → cân nhắc slot reservation&lt;br&gt;&lt;br&gt;&lt;i&gt;&lt;code&gt;maximum_bytes_billed&lt;/code&gt; = byte lần chạy thường × 3&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFE6CC;strokeColor=#D79B00;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c6">
+          <mxGeometry x="20" y="195" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <mxCell id="d11" value="&lt;b&gt;#11 · Phạm vi phân quyền&lt;/b&gt;&lt;br&gt;&lt;br&gt;Hiện tại: &lt;b&gt;dataEditor mức project&lt;/b&gt; — rộng hơn lý tưởng&lt;br&gt;Lý do: &lt;code&gt;bq add-iam-policy-binding&lt;/code&gt; bị chặn allowlisting&lt;br&gt;Ngưỡng thu hẹp: có PII &lt;i&gt;hoặc&lt;/i&gt; &amp;gt; 1 nhóm người dùng&lt;br&gt;&lt;br&gt;&lt;i&gt;Đường thu hẹp: Console → dataset → Sharing → Permissions&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5E8D4;strokeColor=#82B366;align=left;verticalAlign=top;spacingLeft=10;spacingTop=8;fontSize=11;" vertex="1" parent="c6">
+          <mxGeometry x="20" y="345" width="440" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- ============ LUỒNG GIỮA CÁC NHÓM ============ -->
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#666666;endArrow=block;" edge="1" parent="1" source="c1" target="c2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#666666;endArrow=block;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="c2" target="c4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="800" y="495" />
+              <mxPoint x="280" y="495" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e45" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=2;strokeColor=#666666;endArrow=block;" edge="1" parent="1" source="c4" target="c5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e34" value="chi phối cấu trúc bảng" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#9673A6;strokeWidth=2;endArrow=block;fontSize=10;fontColor=#9673A6;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="c3" target="c4">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1060" y="295" />
+              <mxPoint x="1060" y="490" />
+              <mxPoint x="280" y="490" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e65" value="giám sát mọi bước" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#B85450;strokeWidth=2;endArrow=none;fontSize=10;fontColor=#B85450;exitX=0;exitY=0.25;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="c6" target="c5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ============ THỨ TỰ HÀNH ĐỘNG ============ -->
+        <mxCell id="action" value="&lt;b style=&quot;font-size:13px&quot;&gt;Thứ tự hành động — (đã vượt ngưỡng) trước, (giá trị ÷ công sức) sau&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;b style=&quot;color:#B85450&quot;&gt;1.&lt;/b&gt; Cảnh báo khi job fail &lt;i&gt;(#9 · ~1 giờ)&lt;/i&gt;&#160;&#160;&#160;&lt;b style=&quot;color:#B85450&quot;&gt;2.&lt;/b&gt; Bronze append-only + phân vùng &lt;i&gt;(#5, #6 · ~3 giờ)&lt;/i&gt;&#160;&#160;&#160;&lt;b style=&quot;color:#D79B00&quot;&gt;3.&lt;/b&gt; &lt;code&gt;git init&lt;/code&gt; + push remote &lt;i&gt;(#12 · ~30 phút)&lt;/i&gt;&lt;br&gt;&lt;b style=&quot;color:#D79B00&quot;&gt;4.&lt;/b&gt; Xác nhận Scheduler đã bật &lt;i&gt;(#2 · ~15 phút)&lt;/i&gt;&#160;&#160;&#160;&lt;b style=&quot;color:#D79B00&quot;&gt;5.&lt;/b&gt; Budget alert &lt;i&gt;(#10 · ~15 phút)&lt;/i&gt;&#160;&#160;&#160;&lt;b style=&quot;color:#82B366&quot;&gt;6.&lt;/b&gt; Thu hẹp dataEditor &lt;i&gt;(#11 · ~30 phút)&lt;/i&gt;&lt;br&gt;&lt;br&gt;&lt;b&gt;Cố tình chưa làm:&lt;/b&gt; #4 config schema &lt;i&gt;(chờ nguồn thứ 2)&lt;/i&gt; · #7 Dataform &lt;i&gt;(chờ bảng thứ 3)&lt;/i&gt; · #8 Workflows &lt;i&gt;(chờ nguồn thứ 3)&lt;/i&gt; · #12 CI/CD trigger &lt;i&gt;(chờ người thứ 2)&lt;/i&gt;&lt;br&gt;&lt;i&gt;Làm sớm là dựng hạ tầng thừa phải nuôi khi chưa có ai dùng.&lt;/i&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#666666;align=left;verticalAlign=top;spacingLeft=14;spacingTop=10;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="900" width="1000" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note" value="&lt;i&gt;Số USD là mức tham khảo cho asia-southeast1 tại 2026-09-10 — dùng để so sánh bậc độ lớn giữa các lựa chọn, không dùng lập dự toán.&lt;/i&gt;" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1070" width="1000" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

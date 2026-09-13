@@ -1,0 +1,51 @@
+%% Reconciliation as a release gate — design/architecture.md §07
+%% Render: mermaid.live | VS Code Mermaid preview
+
+flowchart LR
+
+  L["<b>Legacy deliverable</b><br/><small>the Excel/Sheet that ships today<br/>frozen once, at an agreed date</small>"]
+  N["<b>New pipeline output</b><br/><small>mart_*, rebuilt every run</small>"]
+
+  B[("recon.baseline_*<br/><small>immutable</small>")]
+  C[("recon.candidate_*<br/><small>replaced every run</small>")]
+
+  D["<b>Generic diff engine</b><br/><small>FULL OUTER JOIN on declared grain<br/>abs + relative tolerance</small>"]
+
+  subgraph STATUS["Per-row status"]
+    direction TB
+    S1["match"]
+    S2["variance<br/><small>outside tolerance</small>"]
+    S3["missing_in_new"]
+    S4["extra_in_new"]
+  end
+
+  SC["<b>Scorecard</b><br/><small>match rate · variance by country/segment<br/>top 20 absolute diffs · total value delta</small>"]
+
+  G{{"match_rate ≥ threshold<br/>for 3 consecutive runs?"}}
+
+  P["<b>Cutover</b><br/><small>analyst signs the dossier<br/>legacy calculation retired</small>"]
+  V["<b>Variance report</b><br/><small>to the analyst who owns the model</small>"]
+
+  R1["Pipeline is wrong<br/><small>fix the SQL model</small>"]
+  R2["Legacy figure was wrong<br/><small>stale lookup, range stopped at row 400 —<br/>record it, move the baseline</small>"]
+
+  AFTER["<b>After cutover</b><br/><small>baseline repoints at last approved<br/>production run — same machinery becomes<br/>the monthly regression test</small>"]
+
+  L --> B --> D
+  N --> C --> D
+  D --> STATUS --> SC --> G
+  G -->|pass| P
+  G -->|fail| V
+  V --> R1
+  V --> R2
+  R1 -.->|"rebuild"| N
+  R2 -.->|"amend baseline,<br/>with a written note"| B
+  P ==> AFTER
+
+  classDef pass fill:#1D9482,fill-opacity:0.12,stroke:#1D9482,stroke-width:1.5px
+  classDef fail fill:#BE7134,fill-opacity:0.12,stroke:#BE7134,stroke-width:1.5px
+  classDef store fill:none,stroke:#8A9793,stroke-width:1.2px
+
+  class P,AFTER,S1 pass
+  class V,R1,R2,S2,S3,S4 fail
+  class B,C,L,N,D,SC store

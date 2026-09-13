@@ -1,0 +1,981 @@
+<title>Clearstate BigQuery Blueprint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#F6F8F7; --surface:#FFFFFF; --surface-2:#EFF3F1;
+  --ink:#141F1D; --ink-2:#33403C; --muted:#5D6C68; --faint:#8A9793;
+  --line:#DBE2DF; --line-2:#C6D0CC;
+  --accent:#0E6E62; --accent-soft:#DCEDE9; --accent-ink:#0A544B;
+  --legacy:#A85B24; --legacy-soft:#F7E9DC;
+  --ok:#2E7D4F; --warn:#B07A12; --crit:#B23A3A;
+  --shadow:0 1px 2px rgba(20,31,29,.05), 0 8px 24px -16px rgba(20,31,29,.28);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0D1413; --surface:#141D1B; --surface-2:#1A2422;
+    --ink:#E7EEEB; --ink-2:#C3CFCB; --muted:#93A29D; --faint:#6F7D79;
+    --line:#26312E; --line-2:#33403C;
+    --accent:#57C4B0; --accent-soft:#12302C; --accent-ink:#7FD6C5;
+    --legacy:#D9945A; --legacy-soft:#2E2117;
+    --ok:#5FBE86; --warn:#D8AC4A; --crit:#E07A7A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0D1413; --surface:#141D1B; --surface-2:#1A2422;
+  --ink:#E7EEEB; --ink-2:#C3CFCB; --muted:#93A29D; --faint:#6F7D79;
+  --line:#26312E; --line-2:#33403C;
+  --accent:#57C4B0; --accent-soft:#12302C; --accent-ink:#7FD6C5;
+  --legacy:#D9945A; --legacy-soft:#2E2117;
+  --ok:#5FBE86; --warn:#D8AC4A; --crit:#E07A7A;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--ground); color:var(--ink);
+  font-family:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.62; -webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent-ink); text-decoration-thickness:1px; text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:2px}
+
+.wrap{max-width:1180px; margin:0 auto; padding:0 28px}
+.layout{display:grid; grid-template-columns:1fr; gap:0}
+@media (min-width:1060px){
+  .layout{grid-template-columns:214px minmax(0,1fr); gap:56px; align-items:start}
+}
+
+.masthead{border-bottom:1px solid var(--line); background:var(--surface)}
+.masthead .wrap{padding-top:52px; padding-bottom:40px}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; font-weight:500;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--accent-ink); margin:0 0 18px
+}
+h1{
+  font-family:Newsreader,Georgia,serif; font-weight:500; font-size:clamp(34px,5.2vw,54px);
+  line-height:1.08; letter-spacing:-.015em; margin:0 0 20px; text-wrap:balance; max-width:19ch
+}
+.standfirst{
+  font-family:Newsreader,Georgia,serif; font-size:clamp(18px,2.1vw,21px); line-height:1.52;
+  color:var(--ink-2); max-width:62ch; margin:0 0 30px
+}
+.meta{
+  display:flex; flex-wrap:wrap; gap:0 34px; row-gap:12px; padding-top:22px; margin:0;
+  border-top:1px solid var(--line);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; letter-spacing:.03em;
+}
+.meta div{display:flex; flex-direction:column; gap:3px}
+.meta dt{color:var(--faint); text-transform:uppercase; letter-spacing:.11em; font-size:10.5px}
+.meta dd{margin:0; color:var(--ink-2)}
+
+.toc{display:none}
+@media (min-width:1060px){
+  .toc{display:block; position:sticky; top:24px; padding:40px 0; font-size:13.5px; line-height:1.42}
+}
+.toc p{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px; letter-spacing:.13em;
+  text-transform:uppercase; color:var(--faint); margin:0 0 14px
+}
+.toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:9px}
+.toc a{display:grid; grid-template-columns:26px 1fr; color:var(--muted); text-decoration:none}
+.toc a:hover{color:var(--accent-ink)}
+.toc a span{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px; color:var(--faint);
+  font-variant-numeric:tabular-nums
+}
+
+main{padding:44px 0 80px; min-width:0}
+section{scroll-margin-top:20px; padding-bottom:14px}
+section + section{margin-top:52px; padding-top:46px; border-top:1px solid var(--line)}
+h2{
+  font-family:Newsreader,Georgia,serif; font-weight:500; font-size:clamp(25px,3vw,32px);
+  line-height:1.18; letter-spacing:-.01em; margin:0 0 8px; text-wrap:balance;
+  display:grid; grid-template-columns:auto 1fr; gap:14px; align-items:baseline
+}
+h2 .num{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:13px; font-weight:500;
+  color:var(--accent); letter-spacing:.02em
+}
+.dek{color:var(--muted); font-size:15px; margin:0 0 26px; max-width:66ch}
+@media (min-width:640px){.dek{padding-left:34px}}
+h3{
+  font-family:"Public Sans",sans-serif; font-weight:700; font-size:15px;
+  margin:34px 0 10px; color:var(--ink)
+}
+h4{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-weight:500; font-size:11.5px;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--faint); margin:26px 0 10px
+}
+p{margin:0 0 15px; max-width:68ch}
+ul,ol{margin:0 0 16px; padding-left:20px; max-width:68ch}
+li{margin-bottom:7px}
+li::marker{color:var(--faint)}
+strong{font-weight:600; color:var(--ink)}
+code{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:.855em;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:3px;
+  padding:.1em .34em; color:var(--ink-2)
+}
+
+.call{
+  background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent);
+  border-radius:0 5px 5px 0; padding:16px 20px; margin:22px 0; max-width:68ch;
+}
+.call.legacy{border-left-color:var(--legacy)}
+.call p:last-child{margin-bottom:0}
+.call .tag{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px; letter-spacing:.12em;
+  text-transform:uppercase; color:var(--accent-ink); display:block; margin-bottom:7px
+}
+.call.legacy .tag{color:var(--legacy)}
+
+.decisions{display:grid; gap:12px; margin:22px 0; grid-template-columns:1fr}
+@media (min-width:720px){.decisions{grid-template-columns:1fr 1fr}}
+.dec{
+  background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:15px 17px;
+  box-shadow:var(--shadow)
+}
+.dec h5{margin:0 0 6px; font-size:14px; font-weight:700; font-family:"Public Sans",sans-serif; color:var(--ink)}
+.dec p{font-size:13.5px; line-height:1.5; color:var(--muted); margin:0; max-width:none}
+.dec .verdict{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--accent-ink); display:block; margin-bottom:8px
+}
+
+.tablewrap{overflow-x:auto; margin:20px 0 24px; border:1px solid var(--line); border-radius:6px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:620px}
+th,td{text-align:left; padding:11px 15px; border-bottom:1px solid var(--line); vertical-align:top}
+thead th{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10.5px; font-weight:500;
+  letter-spacing:.1em; text-transform:uppercase; color:var(--faint); background:var(--surface-2);
+  white-space:nowrap
+}
+tbody tr:last-child td{border-bottom:none}
+td code{background:none; border:none; padding:0; color:var(--accent-ink)}
+.nowrap{white-space:nowrap; font-variant-numeric:tabular-nums}
+
+pre{
+  background:var(--surface); border:1px solid var(--line); border-radius:6px;
+  padding:16px 18px; overflow-x:auto; margin:18px 0 22px;
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12.5px; line-height:1.62;
+  color:var(--ink-2)
+}
+pre code{background:none; border:none; padding:0; font-size:inherit; color:inherit}
+pre .c{color:var(--faint)}
+pre .k{color:var(--accent-ink); font-weight:500}
+pre .s{color:var(--legacy)}
+
+figure{margin:28px 0 30px}
+.figscroll{overflow-x:auto}
+figure svg{display:block; width:100%; min-width:680px; height:auto; color:var(--ink)}
+figcaption{margin-top:12px; font-size:13px; color:var(--muted); max-width:68ch; line-height:1.5}
+figcaption b{color:var(--ink-2); font-weight:600}
+
+.steps{list-style:none; padding:0; margin:22px 0; counter-reset:s; max-width:none}
+.steps li{
+  counter-increment:s; display:grid; grid-template-columns:34px 1fr; gap:16px;
+  padding:15px 0; border-top:1px solid var(--line); margin:0
+}
+.steps li:last-child{border-bottom:1px solid var(--line)}
+.steps li::before{
+  content:counter(s,decimal-leading-zero);
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:12px; color:var(--accent);
+  font-variant-numeric:tabular-nums; padding-top:2px
+}
+.steps b{display:block; font-size:14.5px; margin-bottom:3px; color:var(--ink)}
+.steps span{font-size:13.5px; color:var(--muted); line-height:1.55; display:block; max-width:64ch}
+
+.pill{
+  display:inline-block; font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:10px;
+  letter-spacing:.09em; text-transform:uppercase; padding:2px 7px; border-radius:3px;
+  border:1px solid currentColor; white-space:nowrap
+}
+.pill.blocking{color:var(--crit)} .pill.warning{color:var(--warn)} .pill.ok{color:var(--ok)}
+
+footer{border-top:1px solid var(--line); background:var(--surface)}
+footer .wrap{padding:30px 28px 48px}
+footer p{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11.5px; color:var(--faint);
+  max-width:74ch; line-height:1.7; margin:0
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">Cloud migration &amp; data engineering — target architecture</p>
+    <h1>From spreadsheets to a governed BigQuery core</h1>
+    <p class="standfirst">A target architecture and a repeatable migration pattern: move the system of record into BigQuery, keep analysts working where their judgement lives, and prove every migrated number against the deliverable it replaces before anyone is asked to trust it.</p>
+    <dl class="meta">
+      <div><dt>Scope</dt><dd>One pilot dataset → programme pattern</dd></div>
+      <div><dt>Core stack</dt><dd>BigQuery · Dataform · Cloud Run · Workflows</dd></div>
+      <div><dt>Pilot window</dt><dd>10 weeks</dd></div>
+      <div><dt>Status</dt><dd>Draft for review</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="layout">
+
+<nav class="toc" aria-label="Contents">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#s1"><span>01</span>The real problem</a></li>
+    <li><a href="#s2"><span>02</span>Four kinds of spreadsheet</a></li>
+    <li><a href="#s3"><span>03</span>Target architecture</a></li>
+    <li><a href="#s4"><span>04</span>The BigQuery layer model</a></li>
+    <li><a href="#s5"><span>05</span>Ingestion patterns</a></li>
+    <li><a href="#s6"><span>06</span>Orchestration &amp; refresh</a></li>
+    <li><a href="#s7"><span>07</span>Quality &amp; reconciliation</a></li>
+    <li><a href="#s8"><span>08</span>Serving &amp; the portal</a></li>
+    <li><a href="#s9"><span>09</span>Security, cost, performance</a></li>
+    <li><a href="#s10"><span>10</span>CI/CD &amp; documentation</a></li>
+    <li><a href="#s11"><span>11</span>The migration factory</a></li>
+    <li><a href="#s12"><span>12</span>Pilot plan &amp; risks</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="s1">
+  <h2><span class="num">§01</span>The real problem is not storage</h2>
+  <p class="dek">Copying sheets into BigQuery is a week of work. Making the warehouse the thing people actually trust and use is the whole programme — and it fails for reasons that have nothing to do with the loader.</p>
+
+  <p>The stated objective is BigQuery as the central data layer and fewer manual, spreadsheet-based processes. Both are achievable, but the failure mode of this kind of migration is well understood: the pipelines get built, the tables land, and the analysts keep using the spreadsheet anyway — because the spreadsheet is where the assumptions live, because nobody proved the new numbers matched the old ones, and because the first time a column got renamed the pipeline broke silently.</p>
+
+  <p>So this design is organised around three commitments rather than a component list:</p>
+
+  <ul>
+    <li><strong>The warehouse becomes the system of record; the spreadsheet stays as an interface.</strong> Analysts keep entering assumptions in Sheets. What changes is that those sheets become governed, contracted, versioned inputs to a pipeline — not the calculation engine itself.</li>
+    <li><strong>Nothing is &ldquo;migrated&rdquo; until it reconciles.</strong> Reconciliation against the existing deliverable is a release gate with a numeric tolerance, not a report someone reads once. §07 makes this a first-class piece of the platform.</li>
+    <li><strong>The second dataset must be configuration, not a project.</strong> Every part of the pilot is built as a template with the dataset-specific parts pushed into a declarative config file. §11 is the payoff.</li>
+  </ul>
+
+  <div class="call legacy">
+    <span class="tag">Assumption to confirm</span>
+    <p>This design assumes source data is market-intelligence material — country- and segment-level sizing, pricing, penetration and share estimates built from a mix of purchased data, primary research and analyst judgement — with deliverables shipped as Excel and slides. The worked examples below use a country × year × product-segment market sizing model. If the priority dataset is shaped differently (transactional, survey-level, or document-heavy), the layer model holds but §04 and §11 need reshaping.</p>
+  </div>
+</section>
+
+<section id="s2">
+  <h2><span class="num">§02</span>Four kinds of spreadsheet</h2>
+  <p class="dek">The single most useful thing to do in week one is stop treating &ldquo;the spreadsheets&rdquo; as one category. Each of the four kinds has a different destination, and one of them cannot be moved at all.</p>
+
+  <figure>
+    <div class="figscroll">
+      <svg viewBox="0 0 900 428" role="img" aria-label="Diagram showing four kinds of spreadsheet and where each one goes: source extracts are ingested and frozen, assumption sheets stay in Sheets as contracted inputs, calculation engines must be ported to SQL rather than moved, and deliverable outputs become the reconciliation baseline.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="arL" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#BE7134"/>
+          </marker>
+        </defs>
+
+        <text x="20" y="24" font-size="11" font-family="IBM Plex Mono, monospace" letter-spacing="1.4" fill="currentColor" opacity=".5">WHAT IS IN DRIVE TODAY</text>
+        <text x="556" y="24" font-size="11" font-family="IBM Plex Mono, monospace" letter-spacing="1.4" fill="currentColor" opacity=".5">WHERE IT GOES</text>
+
+        <g font-family="Public Sans, sans-serif" font-size="13">
+          <rect x="20" y="44" width="264" height="72" rx="5" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="38" y="72" font-weight="600" fill="currentColor">Source extracts</text>
+          <text x="38" y="93" font-size="11.5" fill="currentColor" opacity=".62">Purchased data, tenders, survey</text>
+          <text x="38" y="108" font-size="11.5" fill="currentColor" opacity=".62">exports, vendor shipment files</text>
+
+          <rect x="20" y="134" width="264" height="72" rx="5" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="38" y="162" font-weight="600" fill="currentColor">Assumption sheets</text>
+          <text x="38" y="183" font-size="11.5" fill="currentColor" opacity=".62">Growth rates, price points, segment</text>
+          <text x="38" y="198" font-size="11.5" fill="currentColor" opacity=".62">mappings, analyst overrides</text>
+
+          <rect x="20" y="224" width="264" height="72" rx="5" fill="none" stroke="#BE7134" stroke-width="1.6"/>
+          <text x="38" y="252" font-weight="600" fill="currentColor">Calculation engines</text>
+          <text x="38" y="273" font-size="11.5" fill="currentColor" opacity=".62">The formula logic itself — nested</text>
+          <text x="38" y="288" font-size="11.5" fill="currentColor" opacity=".62">lookups, cascading model tabs</text>
+
+          <rect x="20" y="314" width="264" height="72" rx="5" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="38" y="342" font-weight="600" fill="currentColor">Deliverable outputs</text>
+          <text x="38" y="363" font-size="11.5" fill="currentColor" opacity=".62">The client-facing tables that ship</text>
+          <text x="38" y="378" font-size="11.5" fill="currentColor" opacity=".62">in the report today</text>
+        </g>
+
+        <g stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)">
+          <line x1="292" y1="80" x2="548" y2="80"/>
+          <line x1="292" y1="170" x2="548" y2="170"/>
+          <line x1="292" y1="350" x2="548" y2="350"/>
+        </g>
+        <line x1="292" y1="260" x2="548" y2="260" stroke="#BE7134" stroke-width="1.8" marker-end="url(#arL)"/>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5" text-anchor="middle">
+          <text x="420" y="71" fill="currentColor" opacity=".62">ingest &amp; freeze</text>
+          <text x="420" y="161" fill="currentColor" opacity=".62">contract &amp; snapshot</text>
+          <text x="420" y="251" fill="currentColor" font-weight="500">PORT — cannot be moved</text>
+          <text x="420" y="341" fill="currentColor" opacity=".62">becomes the baseline</text>
+        </g>
+
+        <g font-family="Public Sans, sans-serif" font-size="13">
+          <rect x="556" y="44" width="324" height="72" rx="5" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="574" y="72" font-weight="600" fill="currentColor">landing.* — immutable, versioned</text>
+          <text x="574" y="93" font-size="11.5" fill="currentColor" opacity=".62">Original file archived to GCS; every row</text>
+          <text x="574" y="108" font-size="11.5" fill="currentColor" opacity=".62">stamped with load_id and source hash</text>
+
+          <rect x="556" y="134" width="324" height="72" rx="5" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="574" y="162" font-weight="600" fill="currentColor">Stays in Sheets — as a typed input</text>
+          <text x="574" y="183" font-size="11.5" fill="currentColor" opacity=".62">Schema contract enforced on read;</text>
+          <text x="574" y="198" font-size="11.5" fill="currentColor" opacity=".62">snapshotted to BigQuery every run</text>
+
+          <rect x="556" y="224" width="324" height="72" rx="5" fill="#BE7134" fill-opacity=".10" stroke="#BE7134" stroke-width="1.6"/>
+          <text x="574" y="252" font-weight="600" fill="currentColor">core.* — Dataform SQL models</text>
+          <text x="574" y="273" font-size="11.5" fill="currentColor" opacity=".7">Rebuilt as version-controlled, tested SQL.</text>
+          <text x="574" y="288" font-size="11.5" fill="currentColor" opacity=".7">This is where the project time actually goes.</text>
+
+          <rect x="556" y="314" width="324" height="72" rx="5" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="574" y="342" font-weight="600" fill="currentColor">recon.baseline_* — the proof</text>
+          <text x="574" y="363" font-size="11.5" fill="currentColor" opacity=".62">Frozen copy of today&#8217;s output, diffed</text>
+          <text x="574" y="378" font-size="11.5" fill="currentColor" opacity=".62">against the new one on every run</text>
+        </g>
+
+        <line x1="20" y1="408" x2="880" y2="408" stroke="currentColor" stroke-opacity=".18"/>
+      </svg>
+    </div>
+    <figcaption><b>The classification drives the plan.</b> Three of the four categories are engineering work with known patterns. The third — porting formula logic into SQL — is analytical archaeology, is the only one that needs an analyst in the room, and is where estimates go wrong. Size the project on that row.</figcaption>
+  </figure>
+
+  <h3>What this means in practice</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Kind</th><th>Treatment</th><th>Who owns it after</th><th>Effort</th></tr></thead>
+      <tbody>
+        <tr><td>Source extracts</td><td>Automated ingest to <code>landing</code>, original archived to GCS, append-only with load lineage</td><td>Data engineering</td><td class="nowrap">Low — templated</td></tr>
+        <tr><td>Assumption sheets</td><td>Stay in Sheets. Gain a schema contract, a validation tab, and a snapshot on every run</td><td>Analysts, with a contract</td><td class="nowrap">Low–medium</td></tr>
+        <tr><td>Calculation engines</td><td>Reverse-engineered and rewritten as Dataform SQL models with assertions</td><td>Data engineering + analyst</td><td class="nowrap">High — the critical path</td></tr>
+        <tr><td>Deliverable outputs</td><td>Frozen as reconciliation baseline, then regenerated from <code>mart</code> tables</td><td>Pipeline, analyst signs off</td><td class="nowrap">Medium</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="call legacy">
+    <span class="tag">The trap to avoid</span>
+    <p>Do not lift assumption sheets into BigQuery as static tables. The moment an analyst has to raise a ticket to change a growth rate, they will fork the sheet and the warehouse becomes stale within a quarter. Assumptions belong in Sheets, read fresh on every run, with a contract that fails loudly when the shape changes.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">§03</span>Target architecture</h2>
+  <p class="dek">Serverless throughout, no always-on infrastructure, and a strict rule that nothing downstream ever reads the landing zone directly.</p>
+
+  <figure>
+    <div class="figscroll">
+      <svg viewBox="0 0 940 470" role="img" aria-label="Target architecture: Google Sheets, Drive files and vendor APIs are extracted by Cloud Run jobs into a GCS archive and the BigQuery landing zone, transformed by Dataform through staging, core and mart layers, with an operations dataset capturing run logs, data-quality and reconciliation results, and served to Looker Studio, Connected Sheets and a client portal through authorized views only. Cloud Scheduler and Workflows orchestrate the whole run.">
+        <defs>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="a2t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1D9482"/>
+          </marker>
+        </defs>
+
+        <g font-family="IBM Plex Mono, monospace" font-size="10.5" letter-spacing="1.3" fill="currentColor" opacity=".5">
+          <text x="16" y="22">SOURCES</text>
+          <text x="196" y="22">EXTRACT</text>
+          <text x="392" y="22">BIGQUERY</text>
+          <text x="790" y="22">CONSUME</text>
+        </g>
+
+        <g font-family="Public Sans, sans-serif" font-size="12" fill="currentColor">
+          <rect x="16" y="36" width="150" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="30" y="59" font-weight="600">Google Sheets</text>
+          <text x="30" y="74" font-size="10.5" opacity=".6">assumptions, trackers</text>
+
+          <rect x="16" y="94" width="150" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="30" y="117" font-weight="600">Excel on Drive</text>
+          <text x="30" y="132" font-size="10.5" opacity=".6">models, client files</text>
+
+          <rect x="16" y="152" width="150" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="30" y="175" font-weight="600">Vendor / API</text>
+          <text x="30" y="190" font-size="10.5" opacity=".6">purchased datasets</text>
+        </g>
+
+        <g font-family="Public Sans, sans-serif" font-size="12" fill="currentColor">
+          <rect x="196" y="36" width="152" height="60" rx="4" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text x="210" y="59" font-weight="600">Cloud Run jobs</text>
+          <text x="210" y="75" font-size="10.5" opacity=".6">Python extractors,</text>
+          <text x="210" y="88" font-size="10.5" opacity=".6">contract validation</text>
+
+          <rect x="196" y="108" width="152" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text x="210" y="131" font-weight="600">Apps Script</text>
+          <text x="210" y="146" font-size="10.5" opacity=".6">trigger + write-back only</text>
+
+          <rect x="196" y="166" width="152" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text x="210" y="189" font-weight="600">GCS archive</text>
+          <text x="210" y="204" font-size="10.5" opacity=".6">immutable original files</text>
+        </g>
+
+        <rect x="392" y="36" width="330" height="266" rx="6" fill="none" stroke="#1D9482" stroke-opacity=".55" stroke-width="1.4"/>
+        <g font-family="Public Sans, sans-serif" font-size="12" fill="currentColor">
+          <rect x="410" y="54" width="294" height="44" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="424" y="72" font-weight="600">landing</text>
+          <text x="424" y="88" font-size="10.5" opacity=".6">raw, append-only, partitioned by load date</text>
+
+          <rect x="410" y="110" width="294" height="44" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="424" y="128" font-weight="600">staging</text>
+          <text x="424" y="144" font-size="10.5" opacity=".6">typed, deduplicated, conformed names</text>
+
+          <rect x="410" y="166" width="294" height="44" rx="4" fill="#1D9482" fill-opacity=".10" stroke="#1D9482" stroke-width="1.4"/>
+          <text x="424" y="184" font-weight="600" fill="currentColor">core</text>
+          <text x="424" y="200" font-size="10.5" opacity=".72">conformed dimensions + facts — the model</text>
+
+          <rect x="410" y="222" width="294" height="44" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="424" y="240" font-weight="600">mart_*</text>
+          <text x="424" y="256" font-size="10.5" opacity=".6">per deliverable, per client, per dashboard</text>
+
+          <text x="410" y="288" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="currentColor" opacity=".85">transformed by Dataform — SQL in git, assertions at every layer</text>
+        </g>
+
+        <g font-family="Public Sans, sans-serif" font-size="12" fill="currentColor">
+          <rect x="750" y="54" width="174" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="764" y="77" font-weight="600">Looker Studio</text>
+          <text x="764" y="92" font-size="10.5" opacity=".6">internal dashboards</text>
+
+          <rect x="750" y="112" width="174" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="764" y="135" font-weight="600">Connected Sheets</text>
+          <text x="764" y="150" font-size="10.5" opacity=".6">analyst self-serve</text>
+
+          <rect x="750" y="170" width="174" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="764" y="193" font-weight="600">Client portal</text>
+          <text x="764" y="208" font-size="10.5" opacity=".6">future — RLS by client</text>
+
+          <rect x="750" y="228" width="174" height="46" rx="4" fill="none" stroke="currentColor" stroke-opacity=".35"/>
+          <text x="764" y="251" font-weight="600">Excel / PPT export</text>
+          <text x="764" y="266" font-size="10.5" opacity=".6">generated deliverables</text>
+        </g>
+
+        <g stroke="currentColor" stroke-width="1.2" marker-end="url(#a2)" opacity=".75">
+          <line x1="174" y1="59" x2="188" y2="59"/>
+          <line x1="174" y1="117" x2="188" y2="117"/>
+          <line x1="174" y1="175" x2="188" y2="175"/>
+        </g>
+        <line x1="356" y1="76" x2="402" y2="76" stroke="currentColor" stroke-width="1.3" marker-end="url(#a2)"/>
+        <text x="379" y="68" font-size="9.5" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="currentColor" opacity=".6">load</text>
+
+        <line x1="730" y1="244" x2="742" y2="244" stroke="#1D9482" stroke-width="1.4" marker-end="url(#a2t)"/>
+        <path d="M 722 244 L 736 244 L 736 77 L 742 77" fill="none" stroke="#1D9482" stroke-width="1.4" marker-end="url(#a2t)"/>
+        <path d="M 736 244 L 736 135 L 742 135" fill="none" stroke="#1D9482" stroke-width="1.4" marker-end="url(#a2t)"/>
+        <path d="M 736 244 L 736 193 L 742 193" fill="none" stroke="#1D9482" stroke-width="1.4" marker-end="url(#a2t)"/>
+        <text x="700" y="292" font-size="9.5" font-family="IBM Plex Mono, monospace" text-anchor="end" fill="currentColor">authorized views only</text>
+
+        <rect x="16" y="322" width="706" height="52" rx="5" fill="none" stroke="currentColor" stroke-opacity=".3" stroke-dasharray="4 3"/>
+        <text x="34" y="344" font-size="12" font-weight="600" font-family="Public Sans, sans-serif" fill="currentColor">Cloud Scheduler → Workflows</text>
+        <text x="34" y="362" font-size="10.5" font-family="Public Sans, sans-serif" fill="currentColor" opacity=".6">one orchestrated run: extract → load → transform → assert → reconcile → publish → notify</text>
+
+        <rect x="750" y="322" width="174" height="52" rx="5" fill="none" stroke="currentColor" stroke-opacity=".3"/>
+        <text x="764" y="344" font-size="12" font-weight="600" font-family="Public Sans, sans-serif" fill="currentColor">ops dataset</text>
+        <text x="764" y="362" font-size="10.5" font-family="Public Sans, sans-serif" fill="currentColor" opacity=".6">run log · DQ · recon</text>
+
+        <path d="M 380 374 L 380 398 L 836 398 L 836 380" fill="none" stroke="currentColor" stroke-width="1.1" stroke-opacity=".5" marker-end="url(#a2)"/>
+        <text x="608" y="414" font-size="9.5" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="currentColor" opacity=".55">every step writes an audit row</text>
+
+        <line x1="16" y1="440" x2="924" y2="440" stroke="currentColor" stroke-opacity=".15"/>
+        <text x="16" y="460" font-size="10" font-family="IBM Plex Mono, monospace" fill="currentColor" opacity=".5">No always-on compute. No Composer at pilot scale. No consumer reads landing or staging.</text>
+      </svg>
+    </div>
+    <figcaption><b>The two rules the diagram encodes.</b> Everything enters through a single orchestrated run that writes an audit row at each step, and every consumer reads an authorized view over <code>mart</code> — never a base table. That second rule is what makes it safe to refactor <code>core</code> later without breaking a dashboard someone built in 2027.</figcaption>
+  </figure>
+
+  <h3>Component choices, and what I would trade</h3>
+  <div class="decisions">
+    <div class="dec">
+      <span class="verdict">Chosen · Dataform</span>
+      <h5>Dataform over dbt Core</h5>
+      <p>Serverless and native to BigQuery, git-backed, assertions built in, uses GCP IAM, no host to run. dbt has the richer ecosystem, but it needs Cloud Composer or a Cloud Run runner and a second set of credentials. For a small team this is the lower-drag choice, and SQL models port to dbt later if the team outgrows it.</p>
+    </div>
+    <div class="dec">
+      <span class="verdict">Chosen · Workflows</span>
+      <h5>Scheduler + Workflows over Composer</h5>
+      <p>Composer is roughly a three-figure monthly bill before it runs a single task, plus an Airflow environment to maintain. Workflows costs cents, handles retries and conditional branching, and calls Cloud Run and the Dataform API directly. Revisit only when cross-dataset dependencies genuinely need a scheduler with a DAG-aware backfill story.</p>
+    </div>
+    <div class="dec">
+      <span class="verdict">Chosen · Cloud Run</span>
+      <h5>Cloud Run jobs over Cloud Functions</h5>
+      <p>Extractors handle whole workbooks, need pandas and openpyxl, and occasionally run long. Cloud Run jobs give a proper container, up to 24 hours, and the same image runs locally for debugging. Functions are fine for tiny event handlers; they are a poor home for a spreadsheet parser.</p>
+    </div>
+    <div class="dec">
+      <span class="verdict">Constrained · Apps Script</span>
+      <h5>Apps Script as trigger and writer, never as ETL</h5>
+      <p>It is the only thing that can put a button in a sheet and write results back into a formatted tab, so it earns a place. But it has no meaningful version control, no test framework and a six-minute execution ceiling. Business logic in Apps Script becomes the next thing you have to migrate.</p>
+    </div>
+  </div>
+</section>
+
+<section id="s4">
+  <h2><span class="num">§04</span>The BigQuery layer model</h2>
+  <p class="dek">Datasets as zones, one naming convention, and table design decided by how the data is queried rather than how it arrived.</p>
+
+  <h4>Datasets and naming</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Dataset</th><th>Contains</th><th>Write access</th><th>Retention</th></tr></thead>
+      <tbody>
+        <tr><td><code>landing</code></td><td><code>raw_&lt;source&gt;__&lt;entity&gt;</code> — untyped-ish, append-only, one partition per load</td><td>Extractor SA only</td><td class="nowrap">13 months</td></tr>
+        <tr><td><code>staging</code></td><td><code>stg_&lt;source&gt;__&lt;entity&gt;</code> — typed, deduplicated to current version, renamed to house convention</td><td>Dataform SA</td><td class="nowrap">Rebuilt</td></tr>
+        <tr><td><code>core</code></td><td><code>dim_&lt;entity&gt;</code>, <code>fct_&lt;process&gt;</code> — conformed, source-agnostic, the business model</td><td>Dataform SA</td><td class="nowrap">Permanent</td></tr>
+        <tr><td><code>mart_&lt;area&gt;</code></td><td><code>rpt_&lt;deliverable&gt;</code> — shaped for one dashboard, deliverable or client</td><td>Dataform SA</td><td class="nowrap">Permanent</td></tr>
+        <tr><td><code>recon</code></td><td><code>baseline_*</code>, <code>candidate_*</code>, <code>variance_*</code> — the migration proof</td><td>Dataform SA</td><td class="nowrap">Until sign-off + 12m</td></tr>
+        <tr><td><code>ops</code></td><td><code>run_log</code>, <code>dq_results</code>, <code>recon_results</code>, <code>schema_drift</code>, <code>cost_by_label</code></td><td>All pipeline SAs</td><td class="nowrap">24 months</td></tr>
+        <tr><td><code>sandbox_&lt;user&gt;</code></td><td>Analyst scratch space, 30-day table expiry set at dataset level</td><td>The named user</td><td class="nowrap">30 days</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Worked example — the core model</h4>
+  <p>For a country × year × segment market sizing dataset, the core layer resolves to a small star that most deliverables can be built from:</p>
+
+<pre><code><span class="c">-- core (conformed, source-agnostic)</span>
+dim_country            country_code, country_name, region, income_band, is_active
+dim_product_segment    segment_id, segment_name, parent_segment_id, therapy_area
+dim_vendor             vendor_id, vendor_name, parent_group, is_active
+dim_date               date_key, year, quarter, fiscal_year
+
+fct_market_size        country_code, segment_id, year, scenario_code,
+                       volume_units, asp_usd, value_usd,
+                       estimate_method, confidence_code,
+                       assumption_set_id, load_id, _valid_from, _valid_to
+
+fct_vendor_share       country_code, segment_id, vendor_id, year,
+                       share_pct, value_usd, assumption_set_id, load_id</code></pre>
+
+  <p>Two columns there do most of the governance work. <code>assumption_set_id</code> points at the exact snapshot of the analyst assumption sheet that produced the row, so any number can be traced back to the growth rate and price point behind it. <code>load_id</code> points at the <code>ops.run_log</code> entry, so any number can be traced back to the run that wrote it. Together they make &ldquo;why did this figure change since last month?&rdquo; a query rather than an investigation.</p>
+
+  <h4>Physical design</h4>
+  <ul>
+    <li><strong>Partition</strong> facts on the business date (<code>year</code> as an integer-range partition, or <code>report_date</code> as a date partition). Partition <code>landing</code> tables on ingestion date instead — different question, different key.</li>
+    <li><strong>Cluster</strong> on the columns that appear in filters and joins, most selective first: typically <code>country_code, segment_id</code>. Clustering is free to define and cuts scan cost sharply on the filters analysts actually use.</li>
+    <li><strong>Require a partition filter</strong> on large facts so an accidental full scan fails instead of billing.</li>
+    <li><strong>Slowly changing dimensions</strong>: type 2 on <code>dim_product_segment</code> and <code>dim_vendor</code>, because segment reclassification and vendor acquisitions are exactly the things that silently break a year-on-year comparison. Type 1 elsewhere.</li>
+    <li><strong>Restatement over mutation</strong>: never update a published fact in place. Write a new version with a new <code>load_id</code> and let the view select the current one. Deliverables that shipped must stay reproducible.</li>
+  </ul>
+
+  <h4>Incremental loads</h4>
+  <p>The default pattern is an incremental Dataform model with a merge on the natural key, with a window wide enough to absorb late-arriving corrections:</p>
+
+<pre><code><span class="c">-- definitions/core/fct_market_size.sqlx</span>
+config {
+  type: "incremental",
+  uniqueKey: ["country_code", "segment_id", "year", "scenario_code"],
+  bigquery: {
+    partitionBy: "RANGE_BUCKET(year, GENERATE_ARRAY(2015, 2040, 1))",
+    clusterBy: ["country_code", "segment_id"],
+    requirePartitionFilter: true
+  },
+  assertions: {
+    uniqueKey: ["country_code", "segment_id", "year", "scenario_code"],
+    nonNull: ["country_code", "segment_id", "year", "value_usd"]
+  }
+}
+
+<span class="k">SELECT</span> ... <span class="k">FROM</span> ${ref("stg_sheets__market_inputs")} s
+<span class="k">JOIN</span> ${ref("dim_country")} c <span class="k">USING</span> (country_code)
+${when(incremental(),
+  `WHERE s._ingested_at > (SELECT MAX(_ingested_at) FROM ${self()})`)}</code></pre>
+
+  <div class="call">
+    <span class="tag">Sizing note</span>
+    <p>At market-intelligence volumes — millions of rows, not billions — full rebuilds are often cheaper than incremental complexity, and much easier to reason about. Start with full refresh on anything under roughly 50&nbsp;GB and introduce incremental only where the run time or cost measurably justifies it. Premature incrementality is a common source of silent data loss.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="num">§05</span>Ingestion patterns</h2>
+  <p class="dek">Three source shapes, three patterns, one non-negotiable: the source is captured exactly as it was, before anything is interpreted.</p>
+
+  <h3>Google Sheets</h3>
+  <p>BigQuery can define an external table directly over a Sheet, which is genuinely useful — zero code, always current. But an external table is not reproducible: the numbers behind yesterday's deliverable change the moment an analyst edits a cell, which makes reconciliation meaningless and audit impossible.</p>
+  <p>So use both, in sequence. Define the external table as the read interface, then have the run snapshot it into a native partitioned table in <code>landing</code>:</p>
+
+<pre><code><span class="c">-- ext_ tables are defined once, in Terraform, over the Sheet range</span>
+<span class="k">INSERT INTO</span> landing.raw_sheets__market_inputs
+<span class="k">SELECT</span>
+  *,
+  <span class="s">@load_id</span>            <span class="k">AS</span> load_id,
+  CURRENT_TIMESTAMP()   <span class="k">AS</span> _ingested_at,
+  TO_HEX(MD5(TO_JSON_STRING(t))) <span class="k">AS</span> _row_hash
+<span class="k">FROM</span> ext.market_inputs t;</code></pre>
+
+  <p>Reads happen against the snapshot; the external table only ever feeds the snapshot. The row hash makes change detection and idempotent replays trivial.</p>
+
+  <h3>Excel and files on Drive</h3>
+  <p>A Cloud Run job walks a watched Drive folder (or responds to a Drive change notification), and for each new or modified file: copies the original byte-for-byte to <code>gs://cs-archive/&lt;source&gt;/&lt;yyyy&gt;/&lt;mm&gt;/&lt;file_id&gt;_&lt;revision&gt;.xlsx</code>, parses the declared tabs and ranges, writes Parquet to a staging bucket, and loads to <code>landing</code>. The archive copy matters: real spreadsheets contain merged cells, units baked into headers, footnotes in the data range and hand-typed exceptions. When the parse turns out to be wrong six weeks later, reparsing the archive is a rerun; going back to Drive is an argument about what the file used to contain.</p>
+
+  <h3>Schema contracts and drift</h3>
+  <p>The most common cause of a broken spreadsheet pipeline is not a system failure — it is someone inserting a column. Every source gets a declarative contract, and the extractor validates against it before writing a single row:</p>
+
+<pre><code><span class="c">-- sources/market_inputs.yaml</span>
+source_id: market_inputs
+kind: google_sheet
+spreadsheet_id: 1aB...xyz
+tab: "Assumptions_2026"
+header_row: 3
+grain: [country_code, segment_id, year]
+target: landing.raw_sheets__market_inputs
+schedule: "0 6 * * MON-FRI"
+owner: analytics-team@clearstate.example
+sla_hours: 4
+columns:
+  - {name: country_code, type: STRING,  required: true, regex: "^[A-Z]{2}$"}
+  - {name: segment_id,   type: STRING,  required: true}
+  - {name: year,         type: INT64,   required: true, min: 2015, max: 2040}
+  - {name: growth_pct,   type: FLOAT64, required: true, min: -50, max: 100}
+  - {name: asp_usd,      type: FLOAT64, required: true, min: 0}
+  - {name: analyst_note, type: STRING,  required: false}
+on_violation: fail_and_notify</code></pre>
+
+  <p>Drift is handled by severity rather than by a single failure mode. A new optional column at the end is logged to <code>ops.schema_drift</code> and the run continues. A renamed, reordered or missing required column stops the run and notifies the sheet owner by name — the owner field exists so the alert reaches the person who made the change, not the engineer who has to work out who did.</p>
+
+  <h3>Where Apps Script fits</h3>
+  <ul>
+    <li><strong>Push a submission.</strong> An analyst finishes a sheet and clicks a menu item; the script calls the ingestion endpoint with the sheet id, so the refresh happens on their timing rather than on a fixed schedule.</li>
+    <li><strong>Validate in place.</strong> Highlight cells that violate the contract before submission, so errors surface where they were made.</li>
+    <li><strong>Write results back.</strong> Pull a BigQuery result into a formatted output tab where the deliverable template needs a real Sheet rather than a Connected Sheet.</li>
+  </ul>
+  <p>All three are thin. Anything with branching business logic belongs in the Python extractor or in SQL, where it can be reviewed and tested.</p>
+</section>
+
+<section id="s6">
+  <h2><span class="num">§06</span>Orchestration and refresh</h2>
+  <p class="dek">One workflow per dataset, the same seven steps every time, idempotent at every step so a rerun is always safe.</p>
+
+  <p>Cloud Scheduler triggers a Workflows execution on the dataset's schedule. The workflow is deliberately uniform, because uniformity is what makes the pattern reusable:</p>
+
+  <ol class="steps">
+    <li><b>Open the run</b><span>Insert into <code>ops.run_log</code> with a generated <code>load_id</code>, dataset, trigger and start time. Every downstream write carries this id.</span></li>
+    <li><b>Extract</b><span>Invoke the Cloud Run extractor per source. Contract validated before write; archive copy taken; failure here stops the run before anything lands.</span></li>
+    <li><b>Load to landing</b><span>Append-only into the load-date partition. Re-running the same <code>load_id</code> replaces that partition rather than duplicating it.</span></li>
+    <li><b>Transform</b><span>Call the Dataform API to run the tagged workflow — staging, then core, then marts, dependency-ordered by <code>ref()</code>.</span></li>
+    <li><b>Assert</b><span>Dataform assertions run inline. Blocking failures in <code>core</code> halt the run and leave the previous published state untouched.</span></li>
+    <li><b>Reconcile</b><span>Diff the candidate output against the frozen baseline and write <code>ops.recon_results</code>. During migration this is a gate; after cutover it becomes a regression check.</span></li>
+    <li><b>Publish and notify</b><span>Swap authorized views to the new version, close the run log, refresh dependent Connected Sheets, and post a run summary to the team channel.</span></li>
+  </ol>
+
+  <h4>Failure handling</h4>
+  <ul>
+    <li><strong>Retries</strong> on transient failures only — API rate limits, timeouts — with exponential backoff. Contract violations and assertion failures are never retried; retrying a wrong answer just produces it again.</li>
+    <li><strong>Fail closed on <code>core</code>, fail open on marts.</strong> A broken dimension must not reach a deliverable. A cosmetic mart issue should warn rather than take the dashboard down.</li>
+    <li><strong>Last-good stays served.</strong> Because consumers read authorized views and publication is a view swap, a failed run leaves yesterday's correct numbers in place rather than half of today's.</li>
+    <li><strong>Alerting with an owner.</strong> Cloud Monitoring alerts on run failure, on SLA breach (<code>sla_hours</code> from the contract), and on freshness — a table that has not updated when it should have is a failure even when nothing errored.</li>
+  </ul>
+</section>
+
+<section id="s7">
+  <h2><span class="num">§07</span>Quality and reconciliation</h2>
+  <p class="dek">Reconciliation is the part of this programme that determines whether anyone uses the warehouse. It gets built as platform, not as a one-off spreadsheet comparison.</p>
+
+  <h3>Three tiers of check</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Tier</th><th>Checks</th><th>Where</th><th>On failure</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Structural</strong></td>
+          <td>Uniqueness on grain, non-null on keys and measures, referential integrity to dimensions, accepted values on coded columns</td>
+          <td>Dataform assertions on <code>staging</code> and <code>core</code></td>
+          <td><span class="pill blocking">Blocking</span></td>
+        </tr>
+        <tr>
+          <td><strong>Business</strong></td>
+          <td>Vendor shares sum to 100% ±0.5 per country-segment-year; no negative volumes or prices; ASP within a plausible band; year-on-year growth inside a configured envelope; every active country present for every year</td>
+          <td>Custom assertions on <code>core</code></td>
+          <td><span class="pill blocking">Blocking</span></td>
+        </tr>
+        <tr>
+          <td><strong>Reconciliation</strong></td>
+          <td>New output vs. the deliverable it replaces — row counts, key sets, value differences within tolerance, aggregates by dimension</td>
+          <td><code>recon</code> dataset, per migrated dataset</td>
+          <td><span class="pill warning">Gate</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>How reconciliation actually runs</h3>
+
+  <figure>
+    <div class="figscroll">
+      <svg viewBox="0 0 900 322" role="img" aria-label="Reconciliation loop: the frozen legacy deliverable becomes a baseline table and the new pipeline produces a candidate table; a diff engine compares them on a declared grain and tolerance, writing a variance report. Failures route back to the SQL model for correction; three consecutive clean runs release the dataset for sign-off and cutover.">
+        <defs>
+          <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+          </marker>
+          <marker id="a3l" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#BE7134"/>
+          </marker>
+          <marker id="a3t" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#1D9482"/>
+          </marker>
+        </defs>
+
+        <g font-family="Public Sans, sans-serif" font-size="12.5" fill="currentColor">
+          <rect x="16" y="42" width="196" height="58" rx="5" fill="none" stroke="currentColor" stroke-opacity=".4"/>
+          <text x="32" y="66" font-weight="600">Legacy deliverable</text>
+          <text x="32" y="84" font-size="10.5" opacity=".62">frozen once, at an agreed date</text>
+
+          <rect x="16" y="182" width="196" height="58" rx="5" fill="none" stroke="currentColor" stroke-opacity=".4"/>
+          <text x="32" y="206" font-weight="600">New pipeline output</text>
+          <text x="32" y="224" font-size="10.5" opacity=".62">mart_*, rebuilt every run</text>
+
+          <rect x="268" y="42" width="176" height="58" rx="5" fill="none" stroke="currentColor" stroke-opacity=".4"/>
+          <text x="284" y="66" font-weight="600" font-family="IBM Plex Mono, monospace" font-size="11.5">recon.baseline_*</text>
+          <text x="284" y="84" font-size="10.5" opacity=".62">immutable</text>
+
+          <rect x="268" y="182" width="176" height="58" rx="5" fill="none" stroke="currentColor" stroke-opacity=".4"/>
+          <text x="284" y="206" font-weight="600" font-family="IBM Plex Mono, monospace" font-size="11.5">recon.candidate_*</text>
+          <text x="284" y="224" font-size="10.5" opacity=".62">replaced every run</text>
+
+          <rect x="500" y="98" width="184" height="86" rx="5" fill="#1D9482" fill-opacity=".10" stroke="#1D9482" stroke-width="1.5"/>
+          <text x="516" y="124" font-weight="600" fill="currentColor">Diff engine</text>
+          <text x="516" y="143" font-size="10.5" opacity=".72">declared grain + tolerance</text>
+          <text x="516" y="159" font-size="10.5" opacity=".72">counts · key sets · values</text>
+          <text x="516" y="175" font-size="10.5" opacity=".72">· aggregates by dimension</text>
+
+          <rect x="736" y="42" width="148" height="58" rx="5" fill="none" stroke="#1D9482" stroke-width="1.4"/>
+          <text x="752" y="66" font-weight="600" fill="currentColor">Cutover</text>
+          <text x="752" y="84" font-size="10.5" opacity=".68">3 clean runs → sign-off</text>
+
+          <rect x="736" y="182" width="148" height="58" rx="5" fill="none" stroke="#BE7134" stroke-width="1.4"/>
+          <text x="752" y="206" font-weight="600" fill="currentColor">Variance report</text>
+          <text x="752" y="224" font-size="10.5" opacity=".68">to the owning analyst</text>
+        </g>
+
+        <g stroke="currentColor" stroke-width="1.3" marker-end="url(#a3)">
+          <line x1="220" y1="71" x2="260" y2="71"/>
+          <line x1="220" y1="211" x2="260" y2="211"/>
+          <line x1="452" y1="71" x2="492" y2="120"/>
+          <line x1="452" y1="211" x2="492" y2="163"/>
+        </g>
+
+        <line x1="692" y1="126" x2="728" y2="80" stroke="#1D9482" stroke-width="1.5" marker-end="url(#a3t)"/>
+        <text x="704" y="112" font-size="10" font-family="IBM Plex Mono, monospace" fill="currentColor">pass</text>
+
+        <line x1="692" y1="158" x2="728" y2="203" stroke="#BE7134" stroke-width="1.5" marker-end="url(#a3l)"/>
+        <text x="700" y="182" font-size="10" font-family="IBM Plex Mono, monospace" fill="currentColor">fail</text>
+
+        <path d="M 810 244 L 810 278 L 114 278 L 114 244" fill="none" stroke="#BE7134" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#a3l)"/>
+        <text x="462" y="296" font-size="10.5" font-family="IBM Plex Mono, monospace" text-anchor="middle" fill="currentColor">fix the SQL model, or agree the legacy figure was wrong</text>
+      </svg>
+    </div>
+    <figcaption><b>Both outcomes of a mismatch are legitimate.</b> Often the pipeline is wrong. Reliably, on a real migration, some variances turn out to be errors in the spreadsheet the pipeline replaced — a stale lookup, a range that stopped at row 400. The variance report has to be readable by the analyst who owns the model, because they are the only person who can tell the two cases apart.</figcaption>
+  </figure>
+
+  <h4>The generic diff</h4>
+  <p>One parameterised model, not one per dataset. Given a grain and a tolerance from the dataset config, it produces a single variance table:</p>
+
+<pre><code><span class="k">WITH</span> joined <span class="k">AS</span> (
+  <span class="k">SELECT</span>
+    COALESCE(b.country_code, c.country_code) <span class="k">AS</span> country_code,
+    COALESCE(b.segment_id,   c.segment_id)   <span class="k">AS</span> segment_id,
+    COALESCE(b.year,         c.year)         <span class="k">AS</span> year,
+    b.value_usd <span class="k">AS</span> baseline_value,
+    c.value_usd <span class="k">AS</span> candidate_value
+  <span class="k">FROM</span> recon.baseline_market_size b
+  <span class="k">FULL OUTER JOIN</span> recon.candidate_market_size c
+    <span class="k">USING</span> (country_code, segment_id, year)
+)
+<span class="k">SELECT</span> *,
+  <span class="k">CASE</span>
+    <span class="k">WHEN</span> baseline_value  <span class="k">IS NULL</span> <span class="k">THEN</span> <span class="s">'extra_in_new'</span>
+    <span class="k">WHEN</span> candidate_value <span class="k">IS NULL</span> <span class="k">THEN</span> <span class="s">'missing_in_new'</span>
+    <span class="k">WHEN</span> ABS(candidate_value - baseline_value)
+         &lt;= GREATEST(<span class="s">0.01</span>, ABS(baseline_value) * <span class="s">0.001</span>) <span class="k">THEN</span> <span class="s">'match'</span>
+    <span class="k">ELSE</span> <span class="s">'variance'</span>
+  <span class="k">END</span> <span class="k">AS</span> status,
+  SAFE_DIVIDE(candidate_value - baseline_value, baseline_value) <span class="k">AS</span> pct_diff
+<span class="k">FROM</span> joined</code></pre>
+
+  <p>Results roll up into a scorecard the analyst reads: match rate, count and value of variances by country and segment, the twenty largest absolute differences, and a total-value delta for the deliverable as a whole. A dataset is cleared for cutover when the match rate holds above its threshold — typically 99.5% of rows within 0.1% — across three consecutive runs and the named analyst signs the dossier. Not before.</p>
+
+  <div class="call">
+    <span class="tag">Why this survives the migration</span>
+    <p>Once cutover happens, the baseline is repointed at the last approved production run rather than the legacy sheet. The same machinery then answers &ldquo;what changed since last month, and was that intentional?&rdquo; every single run — which is the regression test this kind of model has never had.</p>
+  </div>
+</section>
+
+<section id="s8">
+  <h2><span class="num">§08</span>Serving, visualisation and the future portal</h2>
+  <p class="dek">Three audiences with genuinely different needs, served from the same marts through one access pattern.</p>
+
+  <h3>Analysts</h3>
+  <p><strong>Connected Sheets</strong> is the highest-leverage tool available here and is usually underused. It gives an analyst a live BigQuery table inside a spreadsheet — pivots, formulas, charts, familiar surface — with no SQL and no extract. It converts the biggest adoption risk into an easier version of what people already do, and it means &ldquo;fewer manual spreadsheet processes&rdquo; does not have to mean &ldquo;no more spreadsheets&rdquo;, which is not a fight worth having.</p>
+
+  <h3>Internal dashboards</h3>
+  <p><strong>Looker Studio</strong> for internal monitoring and exploration: coverage and freshness by dataset, pipeline health from <code>ops.run_log</code>, reconciliation scorecards, and subject-matter dashboards over the marts. It is free, connects natively, and is enough for internal use. Enable <strong>BI Engine</strong> on the marts that back dashboards — a small reservation removes most of the latency and, because results are served from memory, usually reduces query spend rather than adding to it. Looker (the full platform) only becomes worth its cost if a governed semantic layer is needed for external customers.</p>
+
+  <h3>Client deliverables and the portal</h3>
+  <p>Generated deliverables come from a templating job — a Cloud Run task that reads a mart, fills an Excel or PowerPoint template, and drops the output to Drive with the <code>load_id</code> stamped in the file. The deliverable becomes reproducible: the same run id always regenerates the same file.</p>
+  <p>For the future portal, the architecture is already most of the way there, and the key decision is made now rather than later: <strong>client scoping lives in the database, not in the application</strong>. Every client-visible mart carries a <code>client_id</code>, and access is granted through a row-level security policy plus an authorized view. A portal bug then cannot leak one client's data to another, because the query itself cannot see the other rows. Retrofitting that after a portal exists is expensive; adding the column now costs nothing.</p>
+
+<pre><code><span class="k">CREATE OR REPLACE ROW ACCESS POLICY</span> client_scope
+<span class="k">ON</span> mart_client.rpt_market_size
+<span class="k">GRANT TO</span> (<span class="s">"group:portal-readers@clearstate.example"</span>)
+<span class="k">FILTER USING</span> (client_id = SESSION_USER_CLIENT_ID());</code></pre>
+</section>
+
+<section id="s9">
+  <h2><span class="num">§09</span>Security, cost and performance standards</h2>
+  <p class="dek">The standards that are cheap to adopt on day one and disproportionately expensive to retrofit.</p>
+
+  <h3>Access</h3>
+  <ul>
+    <li><strong>Two projects</strong>, <code>clearstate-data-dev</code> and <code>clearstate-data-prod</code>, with identical structure. Nobody develops against production data by accident.</li>
+    <li><strong>Groups, never individuals.</strong> <code>grp-data-eng</code>, <code>grp-analysts</code>, <code>grp-client-readers</code>. Individual grants are how access sprawl starts.</li>
+    <li><strong>A service account per pipeline</strong>, scoped to the datasets it touches. The extractor SA writes <code>landing</code> and nothing else; the Dataform SA reads <code>landing</code> and writes the rest.</li>
+    <li><strong>No human has write access to <code>core</code> in production.</strong> Changes reach it through a reviewed pull request, or they do not reach it.</li>
+    <li><strong>Analysts read marts through authorized views</strong> and write only in their sandbox dataset.</li>
+    <li><strong>Policy tags</strong> on anything commercially sensitive or personal — respondent identifiers, client-attributable pricing — so column-level access is enforced by BigQuery rather than by convention. Drive sharing is audited on the same cycle; a locked-down warehouse fed by a world-readable folder is not secure.</li>
+  </ul>
+
+  <h3>Cost control</h3>
+  <ul>
+    <li><strong>On-demand pricing to start.</strong> At this data volume, editions and slot commitments are very unlikely to pay off. Measure for a quarter, then reconsider with numbers.</li>
+    <li><strong><code>maximum_bytes_billed</code></strong> set on every programmatic query, and a custom per-user daily quota. This turns the classic accidental cross-join from an invoice into an error message.</li>
+    <li><strong>Label every job</strong> with <code>dataset</code>, <code>env</code>, <code>pipeline</code> and <code>owner</code>, then report cost per dataset from <code>INFORMATION_SCHEMA.JOBS</code> into <code>ops.cost_by_label</code>. Cost attribution that arrives with the invoice is too late to act on.</li>
+    <li><strong>Partition expiry</strong> on <code>landing</code>, and physical-bytes storage billing where tables compress well.</li>
+    <li><strong>Materialise expensive views.</strong> A view queried by fifteen dashboard tiles recomputes fifteen times; a table computes once.</li>
+    <li><strong>Budget alerts</strong> at 50 / 80 / 100% of a monthly figure agreed up front, routed to a person rather than a shared inbox.</li>
+  </ul>
+
+  <h3>Performance</h3>
+  <p>Most BigQuery performance work at this scale is column pruning and partition pruning — no <code>SELECT *</code>, always filter the partition key, and let clustering handle the rest. Where a deliverable needs a wide denormalised table, build it as a materialised mart rather than joining at query time in every dashboard. Approximate aggregates (<code>APPROX_COUNT_DISTINCT</code>) are fine for exploration and never for a published number.</p>
+</section>
+
+<section id="s10">
+  <h2><span class="num">§10</span>CI/CD, environments and documentation</h2>
+  <p class="dek">One repository, reviewed changes, and documentation generated from the code that it describes.</p>
+
+<pre><code>clearstate-data/
+├── terraform/            <span class="c"># datasets, IAM, buckets, schedulers, ext tables</span>
+│   ├── modules/dataset/  <span class="c"># reusable: one call per new dataset</span>
+│   └── envs/{dev,prod}/
+├── extractors/           <span class="c"># Python, one image, config-driven</span>
+│   ├── src/clearstate_ingest/
+│   └── tests/
+├── sources/              <span class="c"># the YAML contracts from §05</span>
+├── dataform/
+│   ├── definitions/{staging,core,marts,recon}/
+│   ├── includes/         <span class="c"># shared JS: recon diff, dq macros, naming</span>
+│   └── workflow_settings.yaml
+├── deliverables/         <span class="c"># Excel/PPT templates + render job</span>
+├── apps_script/          <span class="c"># clasp-managed, version controlled</span>
+└── docs/
+    ├── dossiers/         <span class="c"># one per migrated dataset</span>
+    └── runbooks/</code></pre>
+
+  <h4>Pipeline</h4>
+  <ul>
+    <li><strong>On pull request</strong> — lint and type-check Python, run unit tests on the parsers with fixture spreadsheets (including the ugly ones), <code>dataform compile</code>, then run the changed models and their assertions into a PR-scoped dataset in dev. <code>terraform plan</code> posted as a comment.</li>
+    <li><strong>On merge to main</strong> — apply Terraform to dev, deploy the extractor image, run the full Dataform project in dev, run reconciliation, and publish the results to the PR.</li>
+    <li><strong>On tag</strong> — promote the same artefacts to prod. Manual approval, no build step, so prod runs exactly what dev validated.</li>
+  </ul>
+
+  <h4>Documentation that stays true</h4>
+  <p>Descriptions are written in the Dataform model config, which propagates them to BigQuery table and column descriptions, which surface in the console, in Data Catalog search and in Connected Sheets. Documentation written anywhere else drifts; documentation attached to the column is read at the moment someone needs it.</p>
+  <p>On top of that, each migrated dataset gets a <strong>dossier</strong> from a fixed template: source inventory with owners, the field-by-field mapping from spreadsheet cell to warehouse column, the business rules recovered from the formulas and who confirmed each one, the refresh schedule and SLA, the reconciliation result at sign-off, known limitations, and the runbook for the three most likely failures. The dossier is the handover artefact — the thing that means the pattern outlives the engagement.</p>
+</section>
+
+<section id="s11">
+  <h2><span class="num">§11</span>The migration factory</h2>
+  <p class="dek">The requirement is a repeatable pattern, so the pilot's real output is not one migrated dataset — it is the machinery that makes the next one cost a fraction as much.</p>
+
+  <p>Every dataset goes through the same seven steps. The first time through, each step produces a reusable template; from the second dataset onwards, most steps are configuration.</p>
+
+  <ol class="steps">
+    <li><b>Discover</b><span>Inventory the files, tabs, owners, refresh cadence and downstream consumers. Classify every artefact into the four kinds from §02. Output: a source inventory and a dependency sketch.</span></li>
+    <li><b>Contract</b><span>Write the YAML contract per source and agree it with the sheet owner. This is the moment to negotiate a stable header row, which is far easier before migration than after.</span></li>
+    <li><b>Land</b><span>Configure the extractor — no new code in the normal case — and get raw data flowing into <code>landing</code> with archive and lineage. Typically a day.</span></li>
+    <li><b>Model</b><span>The real work: recover the business logic from the formulas, write it as Dataform SQL, and confirm each recovered rule with the analyst who owns it. Expect surprises and undocumented exceptions.</span></li>
+    <li><b>Reconcile</b><span>Freeze the baseline, run the generic diff, work variances down to tolerance, and record what turned out to be a legacy error rather than a pipeline bug.</span></li>
+    <li><b>Cut over</b><span>Repoint dashboards and deliverables at the marts, run old and new in parallel for an agreed period, then retire the legacy calculation with the analyst&#8217;s sign-off.</span></li>
+    <li><b>Hand over</b><span>Complete the dossier, walk the runbook through with the team, and add the dataset to the freshness and cost monitoring.</span></li>
+  </ol>
+
+  <h4>What makes the second dataset cheap</h4>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Asset</th><th>Built during pilot</th><th>Reused as</th></tr></thead>
+      <tbody>
+        <tr><td>Config-driven extractor</td><td>Python image handling Sheets, Excel and CSV against a YAML contract</td><td>A new YAML file</td></tr>
+        <tr><td>Terraform dataset module</td><td>Datasets, IAM bindings, buckets, scheduler, external tables</td><td>A module call with three variables</td></tr>
+        <tr><td>Dataform includes</td><td>Naming helpers, DQ macros, SCD2 helper, the generic recon diff</td><td>Imported, not rewritten</td></tr>
+        <tr><td>Workflow template</td><td>The seven-step run from §06, parameterised by dataset</td><td>A new Workflows deployment</td></tr>
+        <tr><td>Dossier and runbook templates</td><td>Fixed structure, filled per dataset</td><td>A copy and fill</td></tr>
+        <tr><td>Reconciliation scorecard</td><td>Looker Studio report bound to <code>ops.recon_results</code></td><td>Filtered to the new dataset</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>On a well-run programme, dataset two lands in roughly a third of the pilot's elapsed time, and steps 1, 4 and 5 — discovery, modelling and reconciliation — hold most of what remains. Those three need an analyst's time, which is the constraint worth planning around; the engineering is not the bottleneck after the first one.</p>
+</section>
+
+<section id="s12">
+  <h2><span class="num">§12</span>Pilot plan, and what I need from you</h2>
+  <p class="dek">Ten weeks, one dataset taken end to end, with exit criteria written down before the work starts.</p>
+
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Weeks</th><th>Focus</th><th>Output</th></tr></thead>
+      <tbody>
+        <tr><td class="nowrap">1–2</td><td>Discovery and foundations</td><td>Source inventory, four-way classification, target project and datasets in Terraform, repo and CI running, pilot dataset chosen with its owner named</td></tr>
+        <tr><td class="nowrap">3–4</td><td>Ingestion</td><td>Contracts written and agreed, extractor running on schedule, <code>landing</code> populated with archive and lineage, drift detection live</td></tr>
+        <tr><td class="nowrap">5–7</td><td>Modelling</td><td>Staging and core models in Dataform, business rules recovered and confirmed, structural and business assertions passing, first mart built</td></tr>
+        <tr><td class="nowrap">8–9</td><td>Reconciliation</td><td>Baseline frozen, generic diff running, variances worked down to tolerance, scorecard dashboard live, three clean consecutive runs</td></tr>
+        <tr><td class="nowrap">10</td><td>Cutover and handover</td><td>Dashboards and deliverable repointed, dossier and runbooks complete, walkthrough delivered, dataset two scoped using the templates</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Exit criteria — agreed in week 1, not argued in week 10</h4>
+  <ul>
+    <li>The pilot dataset refreshes automatically on schedule with monitoring and alerting, and has done so without manual intervention for two weeks.</li>
+    <li>Reconciliation against the legacy deliverable holds at or above the agreed match rate for three consecutive runs, with every remaining variance explained in writing.</li>
+    <li>The deliverable that depended on the legacy process is produced from BigQuery and accepted by the analyst who owns it.</li>
+    <li>The dossier is complete, and someone on the Clearstate team who did not build it can run the runbook.</li>
+    <li>Dataset two has been scoped against the templates with a credible estimate derived from actual pilot effort.</li>
+  </ul>
+
+  <h3>Risks worth naming now</h3>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>Risk</th><th>Why it bites</th><th>Mitigation</th></tr></thead>
+      <tbody>
+        <tr><td>Formula archaeology overruns</td><td>Model logic lives in nested formulas across tabs, undocumented, with hand-typed exceptions</td><td>Timebox discovery per model; escalate to a decision when a rule cannot be recovered rather than guessing; book analyst time in advance</td></tr>
+        <tr><td>Analyst adoption</td><td>If the warehouse is harder than the sheet, people go back to the sheet</td><td>Connected Sheets from week 5, assumptions stay in Sheets, analysts get a sandbox dataset</td></tr>
+        <tr><td>Source sheet drift</td><td>A renamed column breaks the pipeline silently, credibility never recovers</td><td>Contracts with severity-graded drift detection and named owners on alerts</td></tr>
+        <tr><td>Key-person model knowledge</td><td>One person understands the model; if they are unavailable, step 4 stalls</td><td>Identify them in week 1, secure their time explicitly, capture rules in the dossier as they are confirmed</td></tr>
+        <tr><td>Scope creep across datasets</td><td>&ldquo;While you are in there&rdquo; turns a pilot into a programme with no exit</td><td>One dataset, written exit criteria, a queue for everything else</td></tr>
+        <tr><td>Drive permission sprawl</td><td>Warehouse security is irrelevant if the source folder is open to the domain</td><td>Audit sharing on the pilot sources in week 1 and remediate before ingest</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Open questions</h3>
+  <p>Six answers would let this design be finalised rather than assumed:</p>
+  <ol>
+    <li>Which dataset is the pilot, who owns it, and what deliverable does it feed?</li>
+    <li>Is there an existing GCP organisation and billing account, or does this start from a new project?</li>
+    <li>Roughly what volume and cadence — how many source files, how many rows, how often do they change?</li>
+    <li>What accuracy tolerance is acceptable for reconciliation, and who has authority to sign a dataset off?</li>
+    <li>Any client contractual constraints on data residency, retention or subprocessors that would force region choices, CMEK or VPC Service Controls?</li>
+    <li>What is the intended long-run split between Clearstate engineers and external ones — it changes how much of §10 and §11 should be optimised for handover versus speed?</li>
+  </ol>
+</section>
+
+</main>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Draft target architecture prepared against the Clearstate cloud migration &amp; data engineering brief. Volumes, tolerances and the pilot dataset are illustrative pending the answers in §12; the layer model, reconciliation framework and migration pattern hold regardless.</p>
+  </div>
+</footer>

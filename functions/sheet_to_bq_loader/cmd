@@ -1,0 +1,14 @@
+cd functions/sheet_to_bq_loader
+
+gcloud functions deploy sheet-to-bq-loader \
+  --gen2 \
+  --runtime=python312 \
+  --region=asia-southeast1 \
+  --source=. \
+  --entry-point=load_sheet_to_bq \
+  --trigger-http \
+  --no-allow-unauthenticated \
+  --run-service-account="sheets-to-bq-loader@elt-drive-to-bq.iam.gserviceaccount.com" \
+  --memory=256Mi \
+  --timeout=120s \
+  --set-env-vars="SPREADSHEET_ID=1ClGSnw5kawxRCr43qNUJr4IdiWe3ItH28tBq6CVgcfk,SHEET_RANGE=Sheet1!A1:B,BQ_DATASET=bronze,BQ_TABLE=brz_customer"

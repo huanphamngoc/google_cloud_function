@@ -1,0 +1,107 @@
+# CI/CD for sheets-multi-scd2.
+#
+# Triggered on push to main when anything under functions/sheets_multi_scd2/
+# changes (see CICD.md for the trigger command).
+#
+# Three steps, in the order that fails cheapest first:
+#   1. tests    - the whole suite, ~2 seconds, no cloud account needed
+#   2. config   - sources.yaml actually parses and every scd2 tab has a key
+#   3. deploy   - the same gcloud command deploy.sh runs by hand
+#
+# Step 2 exists because a broken sources.yaml deploys perfectly happily and
+# then fails at 6am against the real spreadsheet. Catching it here costs
+# nothing; catching it there costs a morning.
+
+substitutions:
+  _REGION: asia-southeast1
+  _FUNCTION_NAME: sheets-multi-scd2
+  _RUNTIME_SA: sheets-to-bq-loader
+  _SPREADSHEET_ID: "1ClGSnw5kawxRCr43qNUJr4IdiWe3ItH28tBq6CVgcfk"
+  _BQ_DATASET: core
+  _BQ_STAGING_DATASET: staging
+  _BQ_OPS_DATASET: ops
+
+steps:
+  - id: "tests"
+    name: "python:3.12-slim"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        pip install --quiet --no-cache-dir pytest PyYAML
+        python -m pytest tests/ -q
+
+  - id: "config-check"
+    name: "python:3.12-slim"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        pip install --quiet --no-cache-dir PyYAML
+        python - <<'PY'
+        import sys
+        sys.path.insert(0, "functions/sheets_multi_scd2")
+        from scd2_config import load_config
+        cfg = load_config("functions/sheets_multi_scd2/sources.yaml")
+        print("spreadsheet:", cfg.spreadsheet_id)
+        for title, tab in cfg.tabs.items():
+            print("  %-20s -> %-20s %s %s" % (
+                title, tab.table, tab.mode, list(tab.business_key)))
+        print("config OK: %d declared tab(s)" % len(cfg.tabs))
+        PY
+    waitFor: ["tests"]
+
+  - id: "deploy"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        gcloud functions deploy ${_FUNCTION_NAME} \
+          --gen2 \
+          --runtime=python312 \
+          --region=${_REGION} \
+          --source=functions/sheets_multi_scd2 \
+          --entry-point=load_spreadsheet \
+          --trigger-http \
+          --no-allow-unauthenticated \
+          --run-service-account="${_RUNTIME_SA}@$PROJECT_ID.iam.gserviceaccount.com" \
+          --memory=512Mi \
+          --timeout=540s \
+          --set-env-vars="SPREADSHEET_ID=${_SPREADSHEET_ID},BQ_DATASET=${_BQ_DATASET},BQ_STAGING_DATASET=${_BQ_STAGING_DATASET},BQ_OPS_DATASET=${_BQ_OPS_DATASET},BQ_LOCATION=${_REGION}"
+    waitFor: ["config-check"]
+
+  - id: "smoke-test"
+    name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        # NOTE: $$ escapes the dollar sign. Cloud Build substitutes $VAR in
+        # this file before bash ever sees it, so a shell variable written as
+        # $URL would be replaced with an empty string - or fail the build as
+        # an unknown substitution.
+        URL=$$(gcloud functions describe ${_FUNCTION_NAME} \
+          --region=${_REGION} --gen2 --format="value(serviceConfig.uri)")
+        # A dry run: reads the real spreadsheet, validates every tab, writes
+        # nothing. Proves the deployed revision can actually reach Sheets and
+        # that the config matches the file - without touching any table.
+        TOKEN=$$(gcloud auth print-identity-token)
+        CODE=$$(curl -s -o /tmp/out.json -w '%{http_code}' -X POST \
+          -H "Authorization: Bearer $$TOKEN" "$$URL?dry_run=1")
+        cat /tmp/out.json
+        echo
+        if [ "$$CODE" != "200" ]; then
+          echo "smoke test failed with HTTP $$CODE"
+          exit 1
+        fi
+    waitFor: ["deploy"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+timeout: 900s

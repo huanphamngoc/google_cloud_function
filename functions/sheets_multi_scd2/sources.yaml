@@ -1,0 +1,58 @@
+# Which spreadsheet to load, and how each tab should be versioned.
+#
+# Adding a tab to the spreadsheet needs an entry here at most - never a code
+# change. A tab that is NOT listed still loads (see discover_tabs) but in
+# snapshot mode, because SCD2 without a business key is not possible to do
+# correctly and guessing a key silently corrupts the version history.
+
+spreadsheet_id: "1ClGSnw5kawxRCr43qNUJr4IdiWe3ItH28tBq6CVgcfk"
+
+# project: taken from the runtime service account when omitted
+dataset: core             # SCD2 tables + their views
+staging_dataset: staging  # per-run input, auto-expires after 1 day
+ops_dataset: ops          # load_runs, schema_changes
+location: asia-southeast1
+
+# Pick up tabs that are not listed below and load them in snapshot mode.
+# Turn off to make an unlisted tab an error instead of a silent snapshot.
+discover_tabs: true
+
+# Regexes matched against tab titles. A tab declared under `tabs:` always wins.
+exclude_tabs:
+  - "^_"          # scratch tabs by convention
+  - "(?i)readme"
+  - "(?i)huong dan|hướng dẫn"
+  - "(?i)note|ghi chu|ghi chú"
+
+# Create v_<table> (current rows) and v_<table>_history alongside each table.
+create_views: true
+
+tabs:
+  # ---- the tab that already exists in this file -------------------------
+  Sheet1:
+    table: customer
+    mode: scd2
+    business_key: [id]
+
+  # ---- examples showing every option; delete what you do not need -------
+  #
+  # Orders:
+  #   table: orders
+  #   mode: scd2
+  #   business_key: [order_id]
+  #   header_row: 1
+  #   types:
+  #     order_date: DATE        # force a type inference will not guess
+  #     amount: FLOAT64         # e.g. a column that is integers so far
+  #   exclude_columns:
+  #     - last_edited_by        # kept in _raw, left out of the hash so it
+  #                             # does not open a new version on every edit
+  #   on_duplicate_key: block   # or keep_last
+  #
+  # FX rate:                    # a composite key is just a longer list
+  #   table: fx_rate
+  #   business_key: [currency, rate_date]
+  #
+  # Notes:                      # no key available - append-only snapshots
+  #   table: notes
+  #   mode: snapshot

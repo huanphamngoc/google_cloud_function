@@ -1,0 +1,75 @@
+# Source contract — the agreement with the sheet owner.
+# The evolution engine is the only thing allowed to bump `version` automatically,
+# and only for changes its policy classes as AUTO.
+
+source_id: market_inputs
+kind: csv                      # csv | excel | google_sheet
+version: 1
+
+# where it comes from ------------------------------------------------------
+path: sample_data/market_inputs_v1_2026-01-05.csv
+header_row: 3                  # two preamble lines above the header, as exported
+
+# where it goes ------------------------------------------------------------
+target: landing.raw_sheets__market_inputs
+grain: [country_code, segment_id, year]
+
+# who owns it --------------------------------------------------------------
+owner: analytics-team@clearstate.example
+schedule: "0 6 * * MON-FRI"
+sla_hours: 4
+on_violation: quarantine       # fail_and_notify | quarantine | warn
+
+# how it is reconciled against the deliverable it replaces -----------------
+recon:
+  baseline: recon.baseline_market_size
+  measures: [value_usd]
+  abs_tolerance: 0.01
+  rel_tolerance: 0.001         # 0.1%
+  match_rate_threshold: 0.995
+  consecutive_clean_runs: 3
+
+# schema evolution policy — omit to take the defaults in policy.py ---------
+# evolution_policy:
+#   column_removed_optional: block    # tighten: this source must never lose a column
+#   type_narrowed: block
+
+columns:
+  - name: country_code
+    type: STRING
+    required: true
+    regex: "^[A-Z]{2}$"
+    description: ISO 3166-1 alpha-2. Joins to core.dim_country.
+  - name: segment_id
+    type: STRING
+    required: true
+    description: Product segment code. Joins to core.dim_product_segment.
+  - name: year
+    type: INT64
+    required: true
+    min: 2015
+    max: 2040
+  - name: volume_units
+    type: INT64
+    required: true
+    min: 0
+    description: Estimated units placed or consumed in the year.
+  - name: asp_usd
+    type: FLOAT64
+    required: true
+    min: 0
+    aliases: [average_selling_price]
+    description: Average selling price, USD.
+  - name: value_usd
+    type: FLOAT64
+    required: true
+    min: 0
+    description: volume_units * asp_usd. Reconciled against the legacy deliverable.
+  - name: growth_pct
+    type: FLOAT64
+    required: false
+    min: -50
+    max: 100
+  - name: analyst_note
+    type: STRING
+    required: false

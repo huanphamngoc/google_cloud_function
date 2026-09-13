@@ -1,0 +1,64 @@
+%% Schema evolution — how an incoming header change is classified and resolved
+%% Render: mermaid.live | VS Code Mermaid preview | mmdc -i schema-evolution.mmd -o schema-evolution.svg
+
+flowchart TB
+
+  IN["Incoming file / sheet<br/><small>observed header + sampled values</small>"]
+  FP["Fingerprint the observed schema<br/><small>sha256 of sorted name:type pairs</small>"]
+  REG{{"Fingerprint already in<br/>ops.schema_registry?"}}
+  KNOWN["Known schema version<br/><small>no evolution needed</small>"]
+
+  DIFF["Diff observed vs. contract<br/><small>match by canonical name, then alias, then position</small>"]
+  CLS["Classify every difference"]
+
+  subgraph CLASSES["Change classes and default policy"]
+    direction TB
+    A1["column_added (optional)<br/><b>AUTO</b>"]
+    A2["column_reordered<br/><b>AUTO</b> — we map by name"]
+    A3["type_widened  INT64→FLOAT64→STRING<br/><b>AUTO</b>"]
+    A4["required_relaxed<br/><b>AUTO</b>"]
+    A5["column_renamed, alias declared<br/><b>AUTO</b>"]
+    P1["column_renamed, inferred only<br/><b>PROPOSE</b>"]
+    P2["type_narrowed<br/><b>PROPOSE</b>"]
+    P3["column_removed (optional)<br/><b>PROPOSE</b>"]
+    B1["column_removed (required)<br/><b>BLOCK</b>"]
+    B2["type_incompatible<br/><b>BLOCK</b>"]
+    B3["grain column missing or non-unique<br/><b>BLOCK</b>"]
+  end
+
+  DEC{{"Highest severity<br/>decision across all changes"}}
+
+  AUTO["<b>AUTO — evolve and continue</b><br/><small>bump contract version, widen BigQuery schema<br/>via ALLOW_FIELD_ADDITION / RELAXATION,<br/>register new fingerprint, load normally</small>"]
+  PROP["<b>PROPOSE — load to quarantine</b><br/><small>rows land with _quarantine_reason,<br/>downstream sees last good partition,<br/>diff and suggested contract patch sent to owner</small>"]
+  BLOCK["<b>BLOCK — stop before writing</b><br/><small>nothing lands, run marked failed,<br/>alert routed to contract owner by name</small>"]
+
+  LAND[("landing.raw_*<br/><small>canonical columns + _raw JSON<br/>(every source column preserved,<br/>mapped or not)</small>")]
+  QUAR[("landing.quarantine_*")]
+  LOG[("ops.schema_evolution_log<br/><small>every decision, forever</small>")]
+  STG["staging view<br/><small>COALESCE across historical aliases —<br/>core never sees the rename</small>"]
+
+  IN --> FP --> REG
+  REG -->|yes| KNOWN --> LAND
+  REG -->|no| DIFF --> CLS --> CLASSES --> DEC
+
+  DEC -->|"all AUTO"| AUTO
+  DEC -->|"any PROPOSE,<br/>no BLOCK"| PROP
+  DEC -->|"any BLOCK"| BLOCK
+
+  AUTO --> LAND
+  PROP --> QUAR
+  AUTO -.-> LOG
+  PROP -.-> LOG
+  BLOCK -.-> LOG
+
+  LAND --> STG
+
+  classDef auto fill:#1D9482,fill-opacity:0.12,stroke:#1D9482,stroke-width:1.5px
+  classDef propose fill:#BE7134,fill-opacity:0.12,stroke:#BE7134,stroke-width:1.5px
+  classDef block fill:#B23A3A,fill-opacity:0.12,stroke:#B23A3A,stroke-width:1.5px
+  classDef store fill:none,stroke:#8A9793,stroke-width:1.2px
+
+  class A1,A2,A3,A4,A5,AUTO auto
+  class P1,P2,P3,PROP propose
+  class B1,B2,B3,BLOCK block
+  class LAND,QUAR,LOG,STG,KNOWN store

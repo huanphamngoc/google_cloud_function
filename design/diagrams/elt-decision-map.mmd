@@ -1,0 +1,50 @@
+%% Bản đồ quyết định — ELT Drive/Sheets → BigQuery
+%% Bản Mermaid của elt-decision-map.drawio. Chi tiết ngưỡng: ../elt-drive-to-bq-decisions.md
+%% Màu: đỏ = đã vượt ngưỡng · cam = cần xác minh/nên làm sớm · xanh = đang ở nhánh đúng
+
+flowchart TB
+
+    subgraph G1["1 · NGUỒN → TRÍCH XUẤT"]
+        D3["<b>#3 Chế độ trích xuất</b><br/>Hiện tại: Full extract, 1 dòng<br/>Ngưỡng: > 50.000 dòng hoặc > 120s<br/><i>Sheet không có transaction log →<br/>incremental gần như luôn tệ</i>"]
+        D2["<b>#2 Cơ chế kích hoạt</b><br/>Hiện tại: Scheduler 0 6 * * MON-FRI<br/><b>chưa xác minh đã bật</b><br/>Ngưỡng: SLA < 15 phút → event-driven"]
+    end
+
+    subgraph G2["2 · NỀN TẢNG CHẠY & DEPLOY"]
+        D1["<b>#1 Nền tảng chạy job</b><br/>Hiện tại: Cloud Function gen2, 256MB/120s<br/>Ngưỡng: > 9 phút hoặc > 2GB → Cloud Run Job<br/><i>Cảnh báo sớm ở 50% timeout = 60 giây</i>"]
+        D12["<b>#12 CI/CD & môi trường</b><br/>Hiện tại: deploy thủ công, <b>chưa có git repo</b><br/>Ngưỡng CI/CD: >= 2 người sửa code<br/><i>git init nên làm ngay, không chờ ngưỡng</i>"]
+    end
+
+    subgraph G3["3 · HỢP ĐỒNG DỮ LIỆU"]
+        D4["<b>#4 Xử lý schema</b><br/>Hiện tại: hardcode CANONICAL_COLUMNS<br/>Ngưỡng: nguồn thứ 2, hoặc lần đổi cột thứ 2<br/><i>Nguồn thứ 2 = tín hiệu chuyển nhánh.<br/>Đừng copy function.</i>"]
+        D4B["<i>Khi chuyển sang config-driven:</i><br/><b>AUTO</b> thêm cột · đổi thứ tự · nới kiểu<br/><b>PROPOSE</b> đổi tên cột, độ giống >= 0.5<br/><b>BLOCK</b> xoá cột · thu hẹp kiểu · đổi grain"]
+    end
+
+    subgraph G4["4 · LƯU TRỮ — BRONZE"]
+        D5["<b>#5 Chế độ ghi — ĐÃ VƯỢT NGƯỠNG</b><br/>Hiện tại: WRITE_TRUNCATE, xoá sạch mỗi lần chạy<br/>Chi phí lưu KHÔNG biện minh được:<br/>100k dòng/ngày append-only ~ 0,80 USD/năm<br/><i>Mỗi ngày TRUNCATE = một ngày lịch sử mất vĩnh viễn</i>"]
+        D6["<b>#6 Phân vùng & clustering</b><br/>Hiện tại: không có, bảng 1 dòng — đúng<br/>Ngưỡng: > 1 GB hoặc > 10 triệu dòng<br/><i>Làm CÙNG LÚC với #5 — tạo bảng mới đã có<br/>partition; lúc bảng trống thì miễn phí</i>"]
+    end
+
+    subgraph G5["5 · BIẾN ĐỔI & ĐIỀU PHỐI"]
+        D7["<b>#7 Công cụ biến đổi</b><br/>Hiện tại: chưa có silver/gold<br/>1-2 bảng → Scheduled Query<br/><b>Ngưỡng: bảng thứ 3 → Dataform</b><br/><i>Từ 3 bảng, phụ thuộc chéo tạo lỗi im lặng</i>"]
+        D8["<b>#8 Điều phối</b><br/>Hiện tại: Scheduler gọi thẳng — đủ cho 1 nguồn<br/>Ngưỡng: >= 3 nguồn hoặc có phụ thuộc chéo<br/><b>Composer: 300-500 USD/tháng kể cả khi rảnh</b><br/><i>Dưới 20 nguồn, Workflows gần như luôn đủ</i>"]
+    end
+
+    subgraph G6["6 · VẬN HÀNH — bao trùm mọi bước"]
+        D9["<b>#9 Giám sát — ĐÃ VƯỢT NGƯỠNG</b><br/>Hiện tại: không có cảnh báo nào<br/><i>Có ai phát hiện nếu job fail 3 ngày liền<br/>mà không cần vào Console? → Không.</i><br/>3 alert: fail ngay · freshness 49h · số dòng ±50%"]
+        D10["<b>#10 Chặn chi phí</b><br/>Hiện tại: không có, chi phí gần 0<br/><b>Budget alert nên đặt NGAY</b> — rẻ, chặn sự cố<br/>> 2.000 USD/tháng → cân nhắc slot reservation"]
+        D11["<b>#11 Phạm vi phân quyền</b><br/>Hiện tại: dataEditor mức project — rộng hơn lý tưởng<br/>Lý do: bq add-iam-policy-binding bị chặn allowlisting<br/>Ngưỡng thu hẹp: có PII hoặc > 1 nhóm người dùng"]
+    end
+
+    G1 ==> G2 ==> G4 ==> G5
+    G3 -.->|"chi phối cấu trúc bảng"| G4
+    G6 -.->|"giám sát mọi bước"| G5
+
+    classDef breach fill:#F8CECC,stroke:#B85450,stroke-width:2px,color:#000,text-align:left
+    classDef verify fill:#FFE6CC,stroke:#D79B00,stroke-width:2px,color:#000,text-align:left
+    classDef ok fill:#D5E8D4,stroke:#82B366,stroke-width:1px,color:#000,text-align:left
+    classDef info fill:#FFFFFF,stroke:#B3B3B3,stroke-dasharray:4 3,color:#000,text-align:left
+
+    class D5,D9 breach
+    class D2,D12,D10 verify
+    class D1,D3,D4,D6,D7,D8,D11 ok
+    class D4B info

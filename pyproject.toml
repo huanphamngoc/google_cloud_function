@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "clearstate-ingest"
+version = "0.1.0"
+description = "Config-driven spreadsheet ingestion for BigQuery, with first-class schema evolution"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["PyYAML>=6.0"]
+
+[project.optional-dependencies]
+# reading .xlsx directly rather than an exported CSV
+excel = ["openpyxl>=3.1"]
+# the production path: Sheets API + BigQuery
+gcp = [
+    "google-cloud-bigquery>=3.11",
+    "google-api-python-client>=2.100",
+    "google-auth>=2.23",
+]
+dev = ["pytest>=7.4", "pytest-cov>=4.1"]
+
+[project.scripts]
+clearstate-ingest = "clearstate_ingest.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "functions/sheets_multi_scd2", "dags"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["clearstate_ingest"]
