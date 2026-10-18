@@ -79,10 +79,15 @@ PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectN
 for BUILD_SA in "${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
                 "${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"; do
 
-  # 1. Được phép gọi gcloud functions deploy
-  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-    --member="serviceAccount:${BUILD_SA}" \
-    --role="roles/cloudfunctions.developer" --condition=None
+  # 1. Được phép gọi gcloud functions deploy, và gán IAM cho Cloud Run service
+  #    bên dưới. --no-allow-unauthenticated cần quyền run.services.setIamPolicy,
+  #    thứ mà cloudfunctions.developer KHÔNG bao gồm — thiếu nó thì build xong,
+  #    service xong, rồi hỏng ở bước cuối.
+  for ROLE in roles/cloudfunctions.developer roles/run.admin; do
+    gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+      --member="serviceAccount:${BUILD_SA}" \
+      --role="$ROLE" --condition=None
+  done
 
   # 2. Được phép deploy một function CHẠY AS service account khác ("actAs").
   #    Cấp TRÊN RESOURCE service account, không phải mức project.
@@ -100,6 +105,7 @@ done
 | Quyền | Để làm gì | Thiếu thì lỗi gì |
 |---|---|---|
 | `cloudfunctions.developer` | Gọi `gcloud functions deploy` | `PERMISSION_DENIED: cloudfunctions.functions.update` |
+| `run.admin` | Gán IAM cho Cloud Run service bên dưới | `run.services.setIamPolicy denied` ở **bước cuối**, sau khi build đã xong |
 | `iam.serviceAccountUser` **trên SA** | Deploy function chạy as SA khác | `PERMISSION_DENIED: iam.serviceAccounts.actAs` |
 | `run.invoker` **trên function** | Bước smoke test gọi được function | Smoke test nhận 403 |
 

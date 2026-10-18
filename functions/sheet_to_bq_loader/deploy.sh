@@ -81,6 +81,15 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --role="roles/storage.objectViewer" \
   --condition=None
 
+# run.admin: --no-allow-unauthenticated makes the deploy call setIamPolicy on
+# the underlying Cloud Run service, and cloudfunctions.developer does not
+# include that permission. Without it the build and the service both succeed
+# and the deploy fails on the very last step with run.services.setIamPolicy.
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${COMPUTE_SA}" \
+  --role="roles/run.admin" \
+  --condition=None
+
 # ---------------------------------------------------------------------------
 # 2. Create the service account the function will run as.
 #    No key is created or downloaded - Cloud Functions gen2 attaches this

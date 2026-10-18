@@ -57,7 +57,8 @@ for BUILD_SA in "${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
   for ROLE in roles/cloudbuild.builds.builder \
               roles/artifactregistry.writer \
               roles/logging.logWriter \
-              roles/storage.objectViewer; do
+              roles/storage.objectViewer \
+              roles/run.admin; do
     gcloud projects add-iam-policy-binding "$PROJECT_ID" \
       --member="serviceAccount:${BUILD_SA}" \
       --role="$ROLE" \

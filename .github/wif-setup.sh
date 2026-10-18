@@ -92,9 +92,15 @@ gcloud iam service-accounts add-iam-policy-binding "$DEPLOYER_SA" \
 #    build. Deploying a gen2 function needs actAs on TWO service accounts:
 #    the one the function runs as, and the one the container build runs as.
 # ---------------------------------------------------------------------------
-gcloud projects add-iam-policy-binding "$PROJECT_ID" \
-  --member="serviceAccount:${DEPLOYER_SA}" \
-  --role="roles/cloudfunctions.developer" --condition=None >/dev/null
+# run.admin: --no-allow-unauthenticated makes the deploy call setIamPolicy on
+# the underlying Cloud Run service, and cloudfunctions.developer does not
+# include that permission. Without it the build and the service both succeed
+# and the deploy fails on the very last step with run.services.setIamPolicy.
+for ROLE in roles/cloudfunctions.developer roles/run.admin; do
+  gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${DEPLOYER_SA}" \
+    --role="$ROLE" --condition=None >/dev/null
+done
 
 for TARGET_SA in "$RUNTIME_SA" "$COMPUTE_SA"; do
   gcloud iam service-accounts add-iam-policy-binding "$TARGET_SA" \
