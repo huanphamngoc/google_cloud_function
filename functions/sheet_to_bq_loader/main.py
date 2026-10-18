@@ -144,7 +144,6 @@ def load_sheet_to_bq(request):
     except Exception:
         logger.exception("load failed (load_id=%s)", load_id)
         return {"status": "error", "load_id": load_id}, 500
-    print('hello')
 
     logger.info("loaded %d row(s) into %s (load_id=%s)", len(records), table_ref, load_id)
     return {"status": "ok", "rows_loaded": len(records), "load_id": load_id}, 200
