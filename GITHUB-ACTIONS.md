@@ -2,7 +2,18 @@
 
 Repo: `https://github.com/huanphamngoc/google_cloud_function`
 
-Thay thế [CICD.md](CICD.md) (Cloud Build). Giữ nguyên nội dung pipeline — test,
+> ## ⏸️ Đang tạm dừng
+>
+> Bản GitHub Actions đã dựng xong và WIF hoạt động, nhưng **tạm dừng vì vấn đề
+> chi phí**. CI/CD đang chạy bằng Cloud Build — xem [CICD.md](CICD.md).
+>
+> Các file workflow nằm ở `.github/workflows-disabled/`. GitHub chỉ đọc thư mục
+> `.github/workflows/`, nên ở vị trí này chúng **không chạy và không tốn phút nào**.
+>
+> **Bật lại:** `git mv .github/workflows-disabled .github/workflows` rồi push.
+> Phần WIF ở bước 1 không cần làm lại — nó đã dựng xong và không tốn tiền.
+
+Khi bật lại, bản này thay thế [CICD.md](CICD.md) (Cloud Build). Giữ nguyên nội dung pipeline — test,
 kiểm tra config, deploy, smoke test — chỉ đổi nơi chạy và cách xác thực.
 
 ---
