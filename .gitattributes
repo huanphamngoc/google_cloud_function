@@ -1,0 +1,8 @@
+# Shell scripts must keep LF endings. A CRLF checkout on Windows makes bash
+# fail with "bad interpreter: No such file or directory" - the \r becomes part
+# of the shebang path.
+*.sh text eol=lf
+
+# Same for anything a Linux runner executes or parses.
+*.yaml text eol=lf
+*.yml  text eol=lf
