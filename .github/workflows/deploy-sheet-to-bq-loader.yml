@@ -1,0 +1,78 @@
+name: Deploy sheet-to-bq-loader
+
+# The original single-tab loader. Kept deployable while sheets-multi-scd2 is
+# being verified; delete this workflow together with the function once the
+# SCD2 acceptance queries pass (see functions/sheets_multi_scd2/README.md).
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functions/sheet_to_bq_loader/**"
+      - ".github/workflows/deploy-sheet-to-bq-loader.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-sheet-to-bq-loader
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: elt-drive-to-bq
+  REGION: asia-southeast1
+  FUNCTION_NAME: sheet-to-bq-loader
+  RUNTIME_SA: sheets-to-bq-loader@elt-drive-to-bq.iam.gserviceaccount.com
+  WIF_PROVIDER: projects/722092646648/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  DEPLOYER_SA: github-actions-deployer@elt-drive-to-bq.iam.gserviceaccount.com
+
+jobs:
+  deploy:
+    name: Test and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install pytest PyYAML
+
+      # This function has no tests of its own - it is one file deployed and
+      # debugged by hand. The shared suite still gates it: a change that breaks
+      # the repo should not reach production whatever directory triggered it.
+      - name: Run test suite
+        run: |
+          python -m pytest tests/ -q
+          python -m py_compile functions/sheet_to_bq_loader/main.py
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy function
+        run: |
+          # SHEET_RANGE contains "!" - harmless here because this runs in a
+          # non-interactive shell, where bash history expansion is off. It is
+          # only a problem when pasting the command into a live terminal.
+          gcloud functions deploy "$FUNCTION_NAME" \
+            --gen2 \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --runtime=python312 \
+            --source=functions/sheet_to_bq_loader \
+            --entry-point=load_sheet_to_bq \
+            --trigger-http \
+            --no-allow-unauthenticated \
+            --run-service-account="$RUNTIME_SA" \
+            --memory=256Mi \
+            --timeout=120s \
+            --set-env-vars='SPREADSHEET_ID=1ClGSnw5kawxRCr43qNUJr4IdiWe3ItH28tBq6CVgcfk,SHEET_RANGE=Sheet1!A1:B,BQ_DATASET=bronze,BQ_TABLE=brz_customer'

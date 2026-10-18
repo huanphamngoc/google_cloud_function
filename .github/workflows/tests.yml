@@ -1,0 +1,54 @@
+name: Tests
+
+# Runs on every pull request and on pushes that touch shared code. Deploys
+# nothing and needs no GCP credentials at all - note the absence of an
+# id-token permission below.
+#
+# This is the piece Cloud Build could not give without extra wiring: the
+# result appears directly on the pull request, before anything merges.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "tests/**"
+      - "dags/**"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install pytest PyYAML
+
+      - name: Run test suite
+        run: python -m pytest tests/ -q
+
+      - name: Validate every loader config
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "functions/sheets_multi_scd2")
+          from scd2_config import load_config
+          cfg = load_config("functions/sheets_multi_scd2/sources.yaml")
+          scd2 = [t for t in cfg.tabs.values() if t.mode == "scd2"]
+          print("declared tabs: %d (%d versioned)" % (len(cfg.tabs), len(scd2)))
+          for tab in scd2:
+              assert tab.business_key, "scd2 tab %r has no business key" % tab.tab
+          print("config OK")
+          PY

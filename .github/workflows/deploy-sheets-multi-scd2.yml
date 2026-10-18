@@ -1,0 +1,153 @@
+name: Deploy sheets-multi-scd2
+
+# Mirrors the Cloud Build pipeline it replaces: test, validate the config,
+# deploy, then prove the deployed revision can actually reach the spreadsheet.
+#
+# Authentication is keyless - Workload Identity Federation swaps GitHub's OIDC
+# token for a short-lived GCP credential. There is no service account key in
+# this repo or in GitHub Secrets. See .github/wif-setup.sh.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functions/sheets_multi_scd2/**"
+      - "tests/test_scd2_*.py"
+      - ".github/workflows/deploy-sheets-multi-scd2.yml"
+  workflow_dispatch:
+
+# Only one deploy at a time. Without this, two quick pushes race and the older
+# revision can win.
+concurrency:
+  group: deploy-sheets-multi-scd2
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for Workload Identity Federation
+
+env:
+  PROJECT_ID: elt-drive-to-bq
+  REGION: asia-southeast1
+  FUNCTION_NAME: sheets-multi-scd2
+  RUNTIME_SA: sheets-to-bq-loader@elt-drive-to-bq.iam.gserviceaccount.com
+  WIF_PROVIDER: projects/722092646648/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+  DEPLOYER_SA: github-actions-deployer@elt-drive-to-bq.iam.gserviceaccount.com
+
+jobs:
+  test:
+    name: Tests and config check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install test dependencies
+        run: pip install pytest PyYAML
+
+      - name: Run test suite
+        run: python -m pytest tests/ -q
+
+      # A broken sources.yaml deploys perfectly happily and then fails at 6am
+      # against the real spreadsheet. Ten seconds here saves a morning there.
+      - name: Validate sources.yaml
+        run: |
+          python - <<'PY'
+          import sys
+          sys.path.insert(0, "functions/sheets_multi_scd2")
+          from scd2_config import load_config
+          cfg = load_config("functions/sheets_multi_scd2/sources.yaml")
+          print("spreadsheet:", cfg.spreadsheet_id)
+          for title, tab in cfg.tabs.items():
+              print("  %-20s -> %-20s %-9s %s" % (
+                  title, tab.table, tab.mode, list(tab.business_key)))
+          print("config OK: %d declared tab(s)" % len(cfg.tabs))
+          PY
+
+  deploy:
+    name: Deploy to Cloud Functions
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        name: Authenticate to GCP (keyless)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - id: deploy
+        name: Deploy function
+        run: |
+          gcloud functions deploy "$FUNCTION_NAME" \
+            --gen2 \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --runtime=python312 \
+            --source=functions/sheets_multi_scd2 \
+            --entry-point=load_spreadsheet \
+            --trigger-http \
+            --no-allow-unauthenticated \
+            --run-service-account="$RUNTIME_SA" \
+            --memory=512Mi \
+            --timeout=540s \
+            --set-env-vars="SPREADSHEET_ID=1ClGSnw5kawxRCr43qNUJr4IdiWe3ItH28tBq6CVgcfk,BQ_DATASET=core,BQ_STAGING_DATASET=staging,BQ_OPS_DATASET=ops,BQ_LOCATION=$REGION"
+
+          URL=$(gcloud functions describe "$FUNCTION_NAME" \
+            --region="$REGION" --gen2 --format="value(serviceConfig.uri)")
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+          echo "Deployed: $URL"
+
+  smoke-test:
+    name: Smoke test (dry run)
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      # A second auth step, because this one asks for an ID token rather than
+      # an access token - and the audience must be the function URL, which did
+      # not exist until the deploy job finished.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.DEPLOYER_SA }}
+          token_format: id_token
+          id_token_audience: ${{ needs.deploy.outputs.url }}
+          id_token_include_email: true
+
+      # Reads the real spreadsheet, validates every tab, writes nothing.
+      # Deploying successfully does not prove the function can reach Sheets.
+      - name: Dry run against the live spreadsheet
+        run: |
+          CODE=$(curl -s -o response.json -w '%{http_code}' -X POST \
+            -H "Authorization: Bearer ${{ steps.auth.outputs.id_token }}" \
+            "${{ needs.deploy.outputs.url }}?dry_run=1")
+          cat response.json
+          echo
+          if [ "$CODE" != "200" ]; then
+            echo "::error::smoke test failed with HTTP $CODE"
+            exit 1
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### sheets-multi-scd2 deployed"
+            echo ""
+            echo "URL: ${{ needs.deploy.outputs.url }}"
+            echo ""
+            echo '```json'
+            cat response.json 2>/dev/null || echo "(no response captured)"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

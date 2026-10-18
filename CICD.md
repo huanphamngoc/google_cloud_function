@@ -2,6 +2,9 @@
 
 Repo: `https://github.com/huanphamngoc/google_cloud_function.git`
 
+> **Tài liệu này đã được thay thế bởi [GITHUB-ACTIONS.md](GITHUB-ACTIONS.md).**
+> Giữ lại để tham khảo cách làm bằng Cloud Build và bảng lỗi thường gặp.
+
 Mục tiêu: `git push` lên nhánh `main` → Cloud Build tự chạy test → deploy →
 smoke test. Không còn gõ `gcloud functions deploy` bằng tay.
 
