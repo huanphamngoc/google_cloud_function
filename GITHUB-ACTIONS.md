@@ -205,3 +205,32 @@ không làm được.
 
 **Thông báo khi fail**: GitHub gửi email mặc định cho người push. Muốn vào Slack
 thì thêm một step `if: failure()`.
+
+---
+
+## Phụ lục — chạy `wif-setup.sh` trên Windows
+
+Script là bash, nên trên Windows phải chạy qua Git Bash. Có một cái bẫy:
+
+**PowerShell** gọi `gcloud.cmd`, file này tự chọn Python đi kèm Cloud SDK.
+**Git Bash** gọi script `gcloud` kiểu Unix, file này lấy `python` đầu tiên trên
+PATH. Nếu đó là Python 3.9 thì gcloud không chạy được — phiên bản này đã bị bỏ
+hỗ trợ — và triệu chứng là `You do not currently have an active account selected`
+dù PowerShell vừa `gcloud auth login` thành công.
+
+Sửa bằng cách trỏ gcloud về Python bundled của chính Cloud SDK:
+
+```powershell
+$env:CLOUDSDK_PYTHON = "C:\Users\Admin\AppData\Local\Google\Cloud SDK\google-cloud-sdk\platform\bundledpython\python.exe"
+bash .github/wif-setup.sh
+```
+
+Kiểm tra trước khi chạy script:
+
+```powershell
+bash -c "gcloud auth list"
+```
+
+Phải thấy tài khoản của bạn có dấu `*`. Nếu vẫn lỗi, chạy script trong **Cloud
+Shell** thay vì máy local — Linux thật, gcloud đã đăng nhập sẵn, không có lớp
+Windows nào ở giữa.
